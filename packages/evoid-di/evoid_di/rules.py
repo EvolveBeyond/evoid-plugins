@@ -1,8 +1,4 @@
-"""Routing rules for the Advanced DI engine.
-
-Rules determine which implementation to use based on context.
-Each service has a RuleSet with ordered rules and a default.
-"""
+"""Routing rules for Level 3 DI."""
 
 from __future__ import annotations
 
@@ -19,19 +15,16 @@ class Rule:
         self.then = then
 
     def matches(self, context: dict[str, Any]) -> bool:
-        """Check if this rule matches the current context."""
         for key, expected in self.when.items():
             actual = context.get(key)
 
             if key == "level":
-                # Compare Level enum
                 if isinstance(expected, str):
                     expected = Level[expected.upper()]
                 if actual != expected:
                     return False
 
             elif key == "metadata_key":
-                # Check a specific metadata value
                 meta = context.get("metadata", {})
                 meta_value = meta.get(expected)
                 wanted = self.when.get("metadata_value")
@@ -39,7 +32,6 @@ class Rule:
                     return False
 
             elif key == "metadata_has":
-                # Check if metadata contains a key
                 meta = context.get("metadata", {})
                 if expected not in meta:
                     return False
@@ -62,7 +54,7 @@ class RuleSet:
             if key == "default":
                 self.default = value
             elif key == "scope":
-                continue  # Handled by services config
+                continue
             else:
                 if isinstance(value, dict):
                     when = value.get("when", {})
@@ -71,7 +63,6 @@ class RuleSet:
                         self.rules.append(Rule(when, then))
 
     def resolve(self, context: dict[str, Any]) -> str | None:
-        """Find the first matching rule, or return default."""
         for rule in self.rules:
             if rule.matches(context):
                 return rule.then

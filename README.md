@@ -14,8 +14,7 @@ Each plugin is an independent Python package. Install only what you need.
 | Redis Cache | `evoid-redis` | Redis cache with TTL support |
 | ScyllaDB/Cassandra | `evoid-scylla` | ScyllaDB or Cassandra storage |
 | Smart Storage | `evoid-smart-storage` | Multi-DB routing, schema enforcement, multi-tenancy |
-| Advanced DI | `evoid-advanced-di` | Context-aware DI with routing rules |
-| DI Engine | `evoid-di` | Dependency injection engine |
+| DI Engine | `evoid-di` | Dependency injection — simple, scoped, or context-aware |
 | Auth Engine | `evoid-auth` | Authentication & authorization |
 | Background Tasks | `evoid-tasks` | Background task scheduling |
 | Loguru Logger | `evoid-loguru` | Loguru logging engine |

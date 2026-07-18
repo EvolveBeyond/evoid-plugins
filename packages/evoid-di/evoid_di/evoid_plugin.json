@@ -1,0 +1,10 @@
+{
+  "name": "evoid-di",
+  "version": "0.1.0",
+  "type": "engine",
+  "description": "Dependency injection engine for EVOID — simple to advanced",
+  "entry_point": "evoid_di:register_plugin",
+  "dependencies": ["evoid>=0.4.0"],
+  "evoid_version": ">=0.4.0",
+  "tags": ["di", "dependency-injection"]
+}

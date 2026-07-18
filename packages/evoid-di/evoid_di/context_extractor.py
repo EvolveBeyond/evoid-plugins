@@ -1,4 +1,4 @@
-"""Extract routing context from EVOID Context and Intent."""
+"""Extract routing context from EVOID Context."""
 
 from __future__ import annotations
 
@@ -6,15 +6,7 @@ from typing import Any
 
 
 def extract_context(ev_ctx: Any, extra: dict[str, Any] | None = None) -> dict[str, Any]:
-    """Build a flat context dict from EVOID Context for rule matching.
-
-    Extracts:
-    - level: Intent level (EPHEMERAL/STANDARD/CRITICAL)
-    - name: Intent name
-    - metadata: Intent metadata dict
-    - user_id: From ctx.state (set by auth processor)
-    - user_role: From ctx.state (set by auth processor)
-    """
+    """Build a flat context dict from EVOID Context for rule matching."""
     intent = ev_ctx.intent
 
     ctx = {
