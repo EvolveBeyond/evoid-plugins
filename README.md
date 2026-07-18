@@ -17,6 +17,7 @@ Each plugin is an independent Python package. Install only what you need.
 | DI Engine | `evoid-di` | Dependency injection — simple, scoped, or context-aware |
 | Auth Engine | `evoid-auth` | Authentication & authorization |
 | Tasks & Logging | `evoid-tasks` | Background tasks + structured logging (loguru optional) |
+| Dashboard | `evoid-dashboard` | Monitoring UI — service map, data lineage, DB viewer, logs |
 
 ## Installation
 
