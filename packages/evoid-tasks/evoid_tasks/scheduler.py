@@ -1,6 +1,30 @@
-"""Task scheduler — fire-and-forget, scheduled, and recurring tasks.
+"""Task scheduler — Godot-inspired lifecycle model.
 
-Every task execution is logged via the event system.
+Every task has lifecycle hooks:
+  on_start()  → _ready()       — task begins
+  on_tick()   → _process()     — runs every interval
+  on_stop()   → _exit_tree()   — task ends
+  on_event()  → Signal         — reacts to events
+  on_error()  → error handler  — catches failures
+
+Usage:
+    from evoid_tasks import Task, scheduler
+
+    # Simple: fire-and-forget
+    scheduler.run(send_email, to="alice@example.com")
+
+    # Lifecycle: recurring with hooks
+    @scheduler.task(interval=60)
+    async def monitorinventory(ctx):
+        if ctx.started:
+            await check_levels()
+        if ctx.tick:
+            await sync_stock()
+
+    # Event-driven: reacts to signals
+    @scheduler.on("order_placed")
+    async def update_stats(ctx):
+        await recalc_stats(ctx.event_data)
 """
 
 from __future__ import annotations
@@ -13,178 +37,226 @@ from typing import Any, Callable
 from .logger import get_logger
 
 
+@dataclass
+class TaskContext:
+    """Runtime context for a task — passed to lifecycle hooks.
+
+    Inspired by Godot's _process(delta) and _ready() patterns.
+    """
+    task_name: str
+    started: bool = False
+    tick: bool = False
+    stopped: bool = False
+    delta: float = 0.0  # Time since last tick
+    event_data: dict = field(default_factory=dict)
+    state: dict = field(default_factory=dict)  # Task-local state
+
+
 @dataclass(frozen=True)
-class Task:
+class TaskDef:
     """Task definition — pure data."""
     name: str
     func: Callable
-    args: tuple = ()
-    kwargs: dict = field(default_factory=dict)
-    interval: float | None = None  # seconds between runs
-    cron: str | None = None  # cron expression (future)
+    interval: float | None = None
+    event: str | None = None  # Listen to this event
     created_at: float = field(default_factory=time.time)
 
 
 class TaskScheduler:
-    """Background task scheduler.
+    """Godot-inspired task scheduler with lifecycle hooks.
 
-    Usage:
-        scheduler = TaskScheduler()
-        scheduler.background(send_email, to="user@example.com")
-        scheduler.schedule(cleanup, interval=3600)
+    Lifecycle:
+        on_start  → called once when task begins
+        on_tick   → called every interval
+        on_stop   → called when task is cancelled
+        on_event  → called when a signal/event fires
+        on_error  → called on exception
     """
 
     def __init__(self, max_concurrent: int = 10):
         self.max_concurrent = max_concurrent
-        self._tasks: list[Task] = []
-        self._running: set[asyncio.Task] = set()
-        self._scheduled: dict[str, asyncio.Task] = {}
+        self._tasks: list[TaskDef] = []
+        self._running: dict[str, asyncio.Task] = {}
+        self._event_handlers: dict[str, list[Callable]] = {}
         self._log = get_logger("tasks")
 
-    def background(self, func: Callable, *args: Any, **kwargs: Any) -> Task:
-        """Fire-and-forget task. Runs in background, result is discarded.
+    # ============================================================
+    # Core API
+    # ============================================================
 
-        Args:
-            func: Async or sync function to run
-            *args: Positional arguments
-            **kwargs: Keyword arguments
-
-        Returns:
-            Task definition (for tracking)
-        """
-        task = Task(
-            name=func.__name__,
-            func=func,
-            args=args,
-            kwargs=kwargs,
-        )
+    def run(self, func: Callable, *args: Any, **kwargs: Any) -> TaskDef:
+        """Fire-and-forget. Runs once in background."""
+        task = TaskDef(name=func.__name__, func=func)
         self._tasks.append(task)
-        self._log.info(f"Background task queued: {task.name}")
-        asyncio.create_task(self._run_background(task))
+        asyncio.create_task(self._exec_once(task, args, kwargs))
         return task
 
-    def schedule(
+    def task(
         self,
-        func: Callable,
+        func: Callable | None = None,
+        *,
         interval: float | None = None,
-        cron: str | None = None,
-    ) -> Task:
-        """Schedule a recurring task.
+    ):
+        """Decorator: define a task with optional interval.
 
-        Args:
-            func: Async function to run repeatedly
-            interval: Seconds between runs
-            cron: Cron expression (future support)
-
-        Returns:
-            Task definition
+        @scheduler.task(interval=60)
+        async def monitor(ctx):
+            ...
         """
-        task = Task(
-            name=func.__name__,
-            func=func,
-            interval=interval,
-            cron=cron,
-        )
-        self._tasks.append(task)
+        def decorator(fn: Callable) -> TaskDef:
+            task_def = TaskDef(name=fn.__name__, func=fn, interval=interval)
+            self._tasks.append(task_def)
+            if interval:
+                task_id = f"{fn.__name__}_{id(fn)}"
+                self._running[task_id] = asyncio.create_task(
+                    self._run_lifecycle(task_def)
+                )
+                self._log.info(f"Scheduled: {fn.__name__} every {interval}s")
+            return task_def  # type: ignore
 
-        if interval:
-            task_id = f"{func.__name__}_{id(func)}"
-            self._scheduled[task_id] = asyncio.create_task(
-                self._run_recurring(task)
-            )
-            self._log.info(f"Scheduled: {task.name} every {interval}s")
+        if func is not None:
+            return decorator(func)
+        return decorator
 
-        return task
+    def on(self, event: str):
+        """Decorator: listen to an event.
 
-    async def _run_background(self, task: Task) -> None:
-        """Execute a background task with logging."""
+        @scheduler.on("order_placed")
+        async def handle_order(ctx):
+            order = ctx.event_data
+            ...
+        """
+        def decorator(fn: Callable) -> Callable:
+            self._event_handlers.setdefault(event, []).append(fn)
+            self._log.info(f"Listening: {fn.__name__} → '{event}'")
+            return fn
+        return decorator
+
+    def emit(self, event: str, data: dict | None = None) -> None:
+        """Emit an event to all handlers."""
+        handlers = self._event_handlers.get(event, [])
+        for handler in handlers:
+            asyncio.create_task(self._exec_event(handler, event, data or {}))
+
+    # ============================================================
+    # Lifecycle execution
+    # ============================================================
+
+    async def _exec_once(
+        self, task: TaskDef, args: tuple, kwargs: dict
+    ) -> None:
+        """Execute a one-shot task with lifecycle."""
+        ctx = TaskContext(task_name=task.name, started=True)
         start = time.monotonic()
-        self._log.info(f"Running: {task.name}")
+
+        self._log.info(f"▶ start: {task.name}")
 
         try:
             if asyncio.iscoroutinefunction(task.func):
-                result = await task.func(*task.args, **task.kwargs)
+                await task.func(*args, **kwargs)
             else:
-                result = task.func(*task.args, **task.kwargs)
+                task.func(*args, **kwargs)
 
             duration = time.monotonic() - start
-            self._log.info(f"Completed: {task.name} in {duration:.3f}s")
-
-            # Emit event for EVOID event system
-            try:
-                from evoid.core.events import emit_sync
-                emit_sync("task_completed", {
-                    "name": task.name,
-                    "duration": duration,
-                    "success": True,
-                })
-            except ImportError:
-                pass
+            self._log.info(f"■ done: {task.name} ({duration:.3f}s)")
+            self._emit_event("task_completed", {
+                "name": task.name, "duration": duration,
+            })
 
         except Exception as e:
             duration = time.monotonic() - start
-            self._log.error(f"Failed: {task.name} after {duration:.3f}s — {e}")
+            self._log.error(f"✖ error: {task.name} — {e}")
+            self._emit_event("task_failed", {
+                "name": task.name, "duration": duration, "error": str(e),
+            })
 
-            try:
-                from evoid.core.events import emit_sync
-                emit_sync("task_failed", {
-                    "name": task.name,
-                    "duration": duration,
-                    "error": str(e),
-                })
-            except ImportError:
-                pass
+    async def _run_lifecycle(self, task: TaskDef) -> None:
+        """Run a recurring task with full lifecycle."""
+        ctx = TaskContext(task_name=task.name)
+        last_tick = time.monotonic()
 
-    async def _run_recurring(self, task: Task) -> None:
-        """Run a task on interval until cancelled."""
-        while True:
-            await asyncio.sleep(task.interval)
-            await self._run_background(task)
+        # _ready
+        ctx.started = True
+        self._log.info(f"▶ ready: {task.name}")
 
-    def cancel(self, task: Task) -> None:
+        try:
+            if hasattr(task.func, "on_start"):
+                await task.func.on_start(ctx)
+
+            while True:
+                # _process(delta)
+                now = time.monotonic()
+                ctx.delta = now - last_tick
+                ctx.tick = True
+                last_tick = now
+
+                try:
+                    if asyncio.iscoroutinefunction(task.func):
+                        await task.func(ctx)
+                    else:
+                        task.func(ctx)
+                except Exception as e:
+                    self._log.error(f"✖ tick error: {task.name} — {e}")
+                    if hasattr(task.func, "on_error"):
+                        await task.func.on_error(ctx, e)
+
+                ctx.tick = False
+                await asyncio.sleep(task.interval)
+
+        except asyncio.CancelledError:
+            # _exit_tree
+            ctx.stopped = True
+            self._log.info(f"■ stop: {task.name}")
+            if hasattr(task.func, "on_stop"):
+                await task.func.on_stop(ctx)
+
+    async def _exec_event(
+        self, handler: Callable, event: str, data: dict
+    ) -> None:
+        """Execute an event handler."""
+        ctx = TaskContext(task_name=handler.__name__, event_data=data)
+        try:
+            if asyncio.iscoroutinefunction(handler):
+                await handler(ctx)
+            else:
+                handler(ctx)
+        except Exception as e:
+            self._log.error(f"✖ event error: {handler.__name__} on '{event}' — {e}")
+
+    def _emit_event(self, name: str, data: dict) -> None:
+        """Emit to EVOID event system."""
+        try:
+            from evoid.core.events import emit_sync
+            emit_sync(name, data)
+        except ImportError:
+            pass
+
+    # ============================================================
+    # Control
+    # ============================================================
+
+    def cancel(self, task_def: TaskDef) -> None:
         """Cancel a scheduled task."""
-        task_id = f"{task.func.__name__}_{id(task.func)}"
-        if task_id in self._scheduled:
-            self._scheduled[task_id].cancel()
-            del self._scheduled[task_id]
-            self._log.info(f"Cancelled: {task.name}")
+        task_id = f"{task_def.name}_{id(task_def.func)}"
+        if task_id in self._running:
+            self._running[task_id].cancel()
+            del self._running[task_id]
+            self._log.info(f"Cancelled: {task_def.name}")
 
     def shutdown(self) -> None:
-        """Cancel all scheduled tasks."""
-        for task_id, async_task in self._scheduled.items():
+        """Cancel all tasks."""
+        for async_task in self._running.values():
             async_task.cancel()
-        self._scheduled.clear()
+        self._running.clear()
         self._log.info("Scheduler shut down")
 
     @property
-    def pending(self) -> int:
-        """Number of queued background tasks."""
-        return len(self._tasks)
+    def active(self) -> int:
+        return len(self._running)
 
 
 # ============================================================
-# Module-level convenience functions
+# Default scheduler
 # ============================================================
 
-_default_scheduler: TaskScheduler | None = None
-
-
-def _get_scheduler() -> TaskScheduler:
-    global _default_scheduler
-    if _default_scheduler is None:
-        _default_scheduler = TaskScheduler()
-    return _default_scheduler
-
-
-def background(func: Callable, *args: Any, **kwargs: Any) -> Task:
-    """Fire-and-forget a background task."""
-    return _get_scheduler().background(func, *args, **kwargs)
-
-
-def schedule(
-    func: Callable,
-    interval: float | None = None,
-    cron: str | None = None,
-) -> Task:
-    """Schedule a recurring task."""
-    return _get_scheduler().schedule(func, interval=interval, cron=cron)
+scheduler = TaskScheduler()

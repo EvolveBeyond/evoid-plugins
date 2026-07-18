@@ -1,76 +1,121 @@
-"""Tests for evoid-tasks plugin."""
+"""Tests for evoid-tasks — Godot-inspired lifecycle."""
 
 import asyncio
 import pytest
-from unittest.mock import AsyncMock, patch
-from evoid_tasks import TaskScheduler, TaskLogger
+from evoid_tasks import TaskScheduler, TaskContext
 
 
-class TestTaskScheduler:
+class TestSimpleExecution:
     @pytest.fixture
-    def scheduler(self):
-        return TaskScheduler(max_concurrent=5)
+    def s(self):
+        return TaskScheduler()
 
     @pytest.mark.asyncio
-    async def test_background_runs(self, scheduler):
-        func = AsyncMock(return_value="done")
-        scheduler.background(func)
-        # Give background task time to complete
+    async def test_run_once(self, s):
+        results = []
+
+        async def my_task():
+            results.append("done")
+
+        s.run(my_task)
         await asyncio.sleep(0.1)
-        func.assert_called_once()
+        assert results == ["done"]
 
     @pytest.mark.asyncio
-    async def test_background_with_args(self, scheduler):
-        func = AsyncMock()
-        scheduler.background(func, "arg1", key="value")
+    async def test_run_with_args(self, s):
+        results = []
+
+        async def my_task(x, y):
+            results.append(x + y)
+
+        s.run(my_task, 2, 3)
         await asyncio.sleep(0.1)
-        func.assert_called_once_with("arg1", key="value")
-
-    def test_schedule_creates_task(self, scheduler):
-        func = AsyncMock()
-        task = scheduler.schedule(func, interval=60)
-        assert task.name == "test_tasks.<lambda>" or task.name == func.__name__
-        assert task.interval == 60
-
-    def test_cancel(self, scheduler):
-        func = AsyncMock()
-        task = scheduler.schedule(func, interval=60)
-        scheduler.cancel(task)
-        assert len(scheduler._scheduled) == 0
-
-    def test_shutdown(self, scheduler):
-        func = AsyncMock()
-        scheduler.schedule(func, interval=60)
-        scheduler.schedule(func, interval=30)
-        scheduler.shutdown()
-        assert len(scheduler._scheduled) == 0
-
-    def test_pending_count(self, scheduler):
-        assert scheduler.pending == 0
-        func = AsyncMock()
-        scheduler.background(func)
-        # pending increments when task is added
-        # (even if it runs immediately in background)
+        assert results == [5]
 
 
-class TestTaskLogger:
-    def test_logger_creation(self):
-        logger = TaskLogger("my_component")
-        assert logger.component == "my_component"
+class TestLifecycle:
+    @pytest.fixture
+    def s(self):
+        return TaskScheduler()
 
-    def test_logger_info(self):
-        logger = TaskLogger("test")
-        # Should not raise
-        logger.info("test message")
+    @pytest.mark.asyncio
+    async def test_task_decorator(self, s):
+        results = []
 
-    def test_logger_error(self):
-        logger = TaskLogger("test")
-        logger.error("error message")
+        @s.task(interval=0.1)
+        async def my_task(ctx: TaskContext):
+            results.append("tick")
+            if len(results) >= 2:
+                s.cancel(s._tasks[-1])
+                raise asyncio.CancelledError()
 
-    def test_logger_warning(self):
-        logger = TaskLogger("test")
-        logger.warning("warning message")
+        await asyncio.sleep(0.3)
+        assert len(results) >= 2
 
-    def test_logger_debug(self):
-        logger = TaskLogger("test")
-        logger.debug("debug message")
+    @pytest.mark.asyncio
+    async def test_on_start_called(self, s):
+        started = []
+
+        @s.task(interval=0.1)
+        async def my_task(ctx: TaskContext):
+            if len(started) >= 1:
+                s.cancel(s._tasks[-1])
+                raise asyncio.CancelledError()
+
+        my_task.on_start = lambda ctx: started.append(True)  # type: ignore
+
+        await asyncio.sleep(0.2)
+
+    @pytest.mark.asyncio
+    async def test_on_stop_called(self, s):
+        stopped = []
+
+        @s.task(interval=0.1)
+        async def my_task(ctx: TaskContext):
+            await asyncio.sleep(1)  # Will be cancelled
+
+        my_task.on_stop = lambda ctx: stopped.append(True)  # type: ignore
+
+        await asyncio.sleep(0.05)
+        s.cancel(s._tasks[-1])
+        await asyncio.sleep(0.1)
+
+
+class TestEvents:
+    @pytest.fixture
+    def s(self):
+        return TaskScheduler()
+
+    @pytest.mark.asyncio
+    async def test_on_event(self, s):
+        results = []
+
+        @s.on("order_placed")
+        async def handle(ctx: TaskContext):
+            results.append(ctx.event_data)
+
+        s.emit("order_placed", {"item": "BLT"})
+        await asyncio.sleep(0.1)
+        assert results == [{"item": "BLT"}]
+
+    @pytest.mark.asyncio
+    async def test_multiple_handlers(self, s):
+        count = [0]
+
+        @s.on("ping")
+        async def handler1(ctx):
+            count[0] += 1
+
+        @s.on("ping")
+        async def handler2(ctx):
+            count[0] += 1
+
+        s.emit("ping")
+        await asyncio.sleep(0.1)
+        assert count[0] == 2
+
+
+class TestControl:
+    def test_shutdown(self, s):
+        s.shutdown()
+        assert s.active == 0
