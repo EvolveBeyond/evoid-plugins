@@ -15,7 +15,7 @@ Each plugin is an independent Python package. Install only what you need.
 | ScyllaDB/Cassandra | `evoid-scylla` | ScyllaDB or Cassandra storage |
 | Smart Storage | `evoid-smart-storage` | Multi-DB routing, schema enforcement, multi-tenancy |
 | DI Engine | `evoid-di` | Dependency injection — simple, scoped, or context-aware |
-| Auth Engine | `evoid-auth` | Authentication & authorization |
+| Auth Engine | `evoid-auth` | Bring your own auth provider — JWT, API Key, OAuth2, custom |
 | Tasks & Logging | `evoid-tasks` | Background tasks + structured logging (loguru optional) |
 | Dashboard | `evoid-dashboard` | Monitoring UI — service map, data lineage, DB viewer, logs |
 

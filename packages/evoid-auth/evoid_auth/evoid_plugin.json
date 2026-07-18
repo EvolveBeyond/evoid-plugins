@@ -1,0 +1,10 @@
+{
+  "name": "evoid-auth",
+  "version": "0.1.0",
+  "type": "engine",
+  "description": "Auth engine — bring your own provider",
+  "entry_point": "evoid_auth:register_plugin",
+  "dependencies": ["evoid>=0.4.0"],
+  "evoid_version": ">=0.4.0",
+  "tags": ["auth", "authentication", "authorization"]
+}
