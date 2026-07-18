@@ -16,8 +16,7 @@ Each plugin is an independent Python package. Install only what you need.
 | Smart Storage | `evoid-smart-storage` | Multi-DB routing, schema enforcement, multi-tenancy |
 | DI Engine | `evoid-di` | Dependency injection — simple, scoped, or context-aware |
 | Auth Engine | `evoid-auth` | Authentication & authorization |
-| Background Tasks | `evoid-tasks` | Background task scheduling |
-| Loguru Logger | `evoid-loguru` | Loguru logging engine |
+| Tasks & Logging | `evoid-tasks` | Background tasks + structured logging (loguru optional) |
 
 ## Installation
 
