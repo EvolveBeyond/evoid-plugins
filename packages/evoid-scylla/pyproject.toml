@@ -1,0 +1,20 @@
+[project]
+name = "evoid-scylla"
+version = "0.1.0"
+description = "ScyllaDB/Cassandra storage engine for EVOID"
+requires-python = ">=3.12"
+license = "MIT"
+dependencies = [
+    "evoid>=0.4.0",
+    "cassandra-driver>=3.29.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-asyncio", "ruff"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["evoid_scylla"]

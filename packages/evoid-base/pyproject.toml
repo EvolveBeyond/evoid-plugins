@@ -1,0 +1,16 @@
+[project]
+name = "evoid-base"
+version = "0.1.0"
+description = "Base contracts and utilities for EVOID plugins"
+requires-python = ">=3.12"
+license = "MIT"
+dependencies = [
+    "evoid>=0.4.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["evoid_base"]

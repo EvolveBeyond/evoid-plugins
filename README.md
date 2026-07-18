@@ -8,9 +8,11 @@ Each plugin is an independent Python package. Install only what you need.
 
 | Plugin | Package | Description |
 |--------|---------|-------------|
+| Base Contracts | `evoid-base` | Shared protocols and utilities |
 | SQLite Storage | `evoid-sqlite` | SQLite storage engine |
-| PostgreSQL Storage | `evoid-postgresql` | PostgreSQL storage engine |
-| Redis Cache | `evoid-redis` | Redis cache engine |
+| PostgreSQL Storage | `evoid-postgresql` | PostgreSQL via SQLAlchemy + asyncpg |
+| Redis Cache | `evoid-redis` | Redis cache with TTL support |
+| ScyllaDB/Cassandra | `evoid-scylla` | ScyllaDB or Cassandra storage |
 | Smart Storage | `evoid-smart-storage` | Multi-DB routing, schema enforcement, multi-tenancy |
 | DI Engine | `evoid-di` | Dependency injection engine |
 | Auth Engine | `evoid-auth` | Authentication & authorization |

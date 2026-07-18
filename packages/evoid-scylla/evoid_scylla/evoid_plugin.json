@@ -1,0 +1,10 @@
+{
+  "name": "evoid-scylla",
+  "version": "0.1.0",
+  "type": "engine",
+  "description": "ScyllaDB/Cassandra storage engine for EVOID",
+  "entry_point": "evoid_scylla:register_plugin",
+  "dependencies": ["cassandra-driver>=3.29.0"],
+  "evoid_version": ">=0.4.0",
+  "tags": ["storage", "scylla", "cassandra"]
+}

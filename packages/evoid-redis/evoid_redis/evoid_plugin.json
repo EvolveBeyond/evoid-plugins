@@ -1,0 +1,10 @@
+{
+  "name": "evoid-redis",
+  "version": "0.1.0",
+  "type": "engine",
+  "description": "Redis cache engine for EVOID",
+  "entry_point": "evoid_redis:register_plugin",
+  "dependencies": ["redis[hiredis]>=5.0.0"],
+  "evoid_version": ">=0.4.0",
+  "tags": ["cache", "redis"]
+}
