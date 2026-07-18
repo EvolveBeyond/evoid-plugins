@@ -1,0 +1,10 @@
+{
+  "name": "evoid-sqlite",
+  "version": "0.1.0",
+  "type": "engine",
+  "description": "SQLite storage engine for EVOID",
+  "entry_point": "evoid_sqlite:register_plugin",
+  "dependencies": ["aiosqlite>=0.20.0"],
+  "evoid_version": ">=0.4.0",
+  "tags": ["storage", "sqlite", "database"]
+}

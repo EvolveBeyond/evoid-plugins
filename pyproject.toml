@@ -1,0 +1,20 @@
+[project]
+name = "evoid-plugins"
+version = "0.1.0"
+description = "Official plugin collection for EVOID runtime"
+requires-python = ">=3.12"
+license = "MIT"
+
+[tool.uv.workspace]
+members = ["packages/*"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["packages/*/tests"]
