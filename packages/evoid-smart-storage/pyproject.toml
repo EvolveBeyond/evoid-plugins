@@ -2,6 +2,7 @@
 name = "evoid-smart-storage"
 version = "0.1.0"
 description = "Smart storage engine with data-type routing, multi-tenancy, and schema enforcement"
+keywords = ["evoid", "iop", "intent-oriented", "smart-storage"]
 requires-python = ">=3.12"
 license = "MIT"
 dependencies = [

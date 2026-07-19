@@ -2,6 +2,7 @@
 name = "evoid-postgresql"
 version = "0.1.0"
 description = "PostgreSQL storage engine via SQLAlchemy for EVOID"
+keywords = ["evoid", "iop", "intent-oriented", "postgresql"]
 requires-python = ">=3.12"
 license = "MIT"
 dependencies = [

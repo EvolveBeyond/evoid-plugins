@@ -2,6 +2,7 @@
 name = "evoid-scylla"
 version = "0.1.0"
 description = "ScyllaDB/Cassandra storage engine for EVOID"
+keywords = ["evoid", "iop", "intent-oriented", "scylla"]
 requires-python = ">=3.12"
 license = "MIT"
 dependencies = [

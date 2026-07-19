@@ -2,6 +2,7 @@
 name = "evoid-base"
 version = "0.1.0"
 description = "Base contracts and utilities for EVOID plugins"
+keywords = ["evoid", "iop", "intent-oriented", "base"]
 requires-python = ">=3.12"
 license = "MIT"
 dependencies = [

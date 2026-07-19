@@ -2,6 +2,7 @@
 name = "evoid-auth"
 version = "0.1.0"
 description = "Auth engine for EVOID — bring your own provider"
+keywords = ["evoid", "iop", "intent-oriented", "auth"]
 requires-python = ">=3.12"
 license = "MIT"
 dependencies = [

@@ -2,6 +2,7 @@
 name = "evoid-dashboard"
 version = "0.1.0"
 description = "Monitoring dashboard for EVOID — service map, data lineage, DB viewer, logs"
+keywords = ["evoid", "iop", "intent-oriented", "dashboard"]
 requires-python = ">=3.12"
 license = "MIT"
 dependencies = [
