@@ -1,6 +1,110 @@
-# EVOID Contracts Reference
+# EVOID Contracts & Core API Reference
 
-Full protocol signatures, utility functions, and the plugin registration system.
+## Intent
+
+```python
+from evoid import Intent, Level
+
+intent = Intent(
+    name="get_user",           # str — unique identifier (required)
+    level=Level.STANDARD,      # Level — ephemeral/standard/critical
+    metadata={"method": "GET"},# dict — arbitrary data for processors
+    timeout=10.0,              # float | None — max seconds
+    priority=0,                # int — execution order (higher first)
+)
+```
+
+Intent is a **frozen dataclass**. Once created, immutable.
+
+### Level enum
+
+```python
+from evoid import Level
+
+Level.EPHEMERAL   # → pipeline: [validate], timeout: 5s
+Level.STANDARD    # → pipeline: [validate, authorize], timeout: 10s
+Level.CRITICAL    # → pipeline: [validate, authorize, audit, protect], timeout: 30s
+```
+
+## Context
+
+```python
+from evoid.core import Context
+
+ctx.intent      # Intent — the intent being processed
+ctx.state       # dict — shared mutable state between processors
+ctx.deps        # dict — injected dependencies (engines, services)
+ctx.metadata    # dict — extra metadata (request params, body)
+ctx.errors      # list[Exception] — accumulated non-fatal errors
+ctx.id          # str — unique context ID (auto-generated)
+```
+
+### Forking contexts
+
+```python
+from evoid.core import fork
+
+child = fork(ctx)
+# child has same intent + deps, copied state, parent_id in metadata
+```
+
+## Result
+
+```python
+from evoid import execute
+
+result = await execute(intent)
+
+result.success     # bool
+result.value       # Any — return value from last processor
+result.error       # Exception | None
+result.processors  # tuple[str, ...] — processor names that ran
+result.duration    # float — seconds
+```
+
+## Processor registration
+
+```python
+from evoid import register_processor
+
+async def my_processor(ctx: Context) -> dict:
+    return {"status": "ok"}
+
+register_processor("my_processor", my_processor)
+```
+
+Built-in processors: `intent_extractor`, `schema_validator`, `auth_checker`, `rate_limiter`, `circuit_breaker`, `logger_processor`.
+
+## Pipeline extension
+
+```python
+from evoid.core.extend import (
+    add_intent_with_pipeline,
+    replace_pipeline,
+    before,
+    after,
+    before_processor,
+    after_processor,
+    remove_processor,
+    list_overrides,
+    clear_overrides,
+    get_pipeline_config,
+)
+```
+
+## Execution
+
+```python
+from evoid import execute, all_intents
+
+# Execute an intent
+result = await execute(intent)
+
+# List all registered intents
+intents = all_intents()
+for name, intent in intents.items():
+    print(f"{name} [{intent.level.value}]")
+```
 
 ## StorageEngine Protocol
 
@@ -9,59 +113,28 @@ from typing import Any, Protocol
 from evoid_base.contracts import StorageEngine
 
 class StorageEngine(Protocol):
-    async def write(self, key: str, data: Any, **kwargs) -> bool:
-        """Write data to storage. Returns True on success."""
-        ...
-
-    async def read(self, key: str, **kwargs) -> Any | None:
-        """Read data from storage. Returns None if not found."""
-        ...
-
-    async def delete(self, key: str, **kwargs) -> bool:
-        """Delete data from storage. Returns True on success."""
-        ...
-
-    async def health(self) -> bool:
-        """Check if the backend is reachable."""
-        ...
+    async def write(self, key: str, data: Any, **kwargs) -> bool: ...
+    async def read(self, key: str, **kwargs) -> Any | None: ...
+    async def delete(self, key: str, **kwargs) -> bool: ...
+    async def health(self) -> bool: ...
 ```
-
-All backends accept a `namespace` kwarg (default: `"default"`) for logical partitioning within a single backend instance.
 
 ## CacheEngine Protocol
 
 ```python
-from typing import Any, Protocol
 from evoid_base.contracts import CacheEngine
 
 class CacheEngine(Protocol):
-    async def get(self, key: str) -> Any | None:
-        """Get a cached value. Returns None if expired or missing."""
-        ...
-
-    async def set(self, key: str, value: Any, ttl: float | None = None) -> bool:
-        """Set a cached value with optional TTL in seconds."""
-        ...
-
-    async def delete(self, key: str) -> bool:
-        """Delete a cached value."""
-        ...
-
-    async def exists(self, key: str) -> bool:
-        """Check if a key exists in cache."""
-        ...
-
-    async def health(self) -> bool:
-        """Check if the cache backend is reachable."""
-        ...
+    async def get(self, key: str) -> Any | None: ...
+    async def set(self, key: str, value: Any, ttl: float | None = None) -> bool: ...
+    async def delete(self, key: str) -> bool: ...
+    async def exists(self, key: str) -> bool: ...
+    async def health(self) -> bool: ...
 ```
-
-CacheEngine does NOT use namespaces. Use key prefixes instead (e.g., `create_cache(prefix="evoid:")`).
 
 ## LoggerEngine Protocol
 
 ```python
-from typing import Protocol
 from evoid_base.contracts import LoggerEngine
 
 class LoggerEngine(Protocol):
@@ -71,62 +144,45 @@ class LoggerEngine(Protocol):
     def debug(self, msg: str, **kwargs) -> None: ...
 ```
 
-LoggerEngine is synchronous. Do not make logging calls async.
-
-## Utility functions
-
-### resolve_engine
+## Plugin registration
 
 ```python
+from evoid.engines.plugin import register
+
+# Register an engine
+register("my-engine", "storage", MyStorage, version="1.0.0")
+
+# Resolve a registered engine
 from evoid_base.utils import resolve_engine
-
-# Fetch a registered engine by name
 storage = resolve_engine("sqlite", "storage")
-cache = resolve_engine("redis", "cache")
-```
 
-### inject_deps
-
-```python
+# Inject dependencies into context
 from evoid_base.utils import inject_deps
-
-# Populate ctx.deps from named engines
 await inject_deps(ctx, {"storage": "sqlite", "cache": "redis"})
-# ctx.deps.storage and ctx.deps.cache are now populated
 ```
 
-## Plugin registration system
-
-Every EVOID plugin must export:
-
-```python
-MANIFEST = {
-    "name": "plugin-name",          # Must match pip package name
-    "version": "1.0.0",             # Semver
-    "type": "storage|cache|logger", # Engine type
-    "description": "Short description",
-    "entry_point": "module:register_plugin",  # Called by EVOID loader
-    "dependencies": [],              # Required pip packages (optional)
-    "evoid_version": ">=0.4.0",    # Minimum EVOID version
-    "tags": ["storage", "custom"],  # For discovery
-}
-
-def register_plugin():
-    from evoid.engines.plugin import register
-    register("plugin-name", "storage", MyEngine, version="1.0.0")
-```
-
-The `entry_point` string is a `module:function` path. The EVOID loader imports the module and calls the function at startup.
-
-## MANIFEST field reference
+## MANIFEST fields
 
 | Field | Required | Type | Notes |
 |-------|----------|------|-------|
-| name | Yes | str | Must match package name on PyPI |
-| version | Yes | str | Semver format |
-| type | Yes | str | One of: `storage`, `cache`, `logger` |
-| description | Yes | str | Short description for plugin discovery |
-| entry_point | Yes | str | `module:function` path to registration function |
+| name | Yes | str | Must match package name |
+| version | Yes | str | Semver |
+| type | Yes | str | `storage`, `cache`, or `logger` |
+| description | Yes | str | Short description |
+| entry_point | Yes | str | `module:function` path |
 | dependencies | No | list[str] | Required pip packages |
-| evoid_version | Yes | str | Minimum EVOID version constraint |
-| tags | No | list[str] | Tags for plugin discovery |
+| evoid_version | Yes | str | Minimum EVOID version |
+| tags | No | list[str] | Discovery tags |
+
+## Schema export (AI integration)
+
+```python
+from evoid import export_schemas
+from evoid.adapters.mcp import create_mcp_server
+
+# Export all intent schemas as JSON
+schemas = export_schemas()
+
+# Create MCP server for AI agents
+server = create_mcp_server("my-api")
+```

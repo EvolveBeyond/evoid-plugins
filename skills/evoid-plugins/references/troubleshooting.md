@@ -1,140 +1,187 @@
 # Troubleshooting
 
-Common errors and fixes in EVOID plugin projects.
+## Core EVOID
 
-## Plugin not loading
+### Intent not executing
+
+**Symptom:** `execute(intent)` returns nothing or raises "intent not found".
+
+**Fix:** Ensure the intent is registered:
+
+```python
+from evoid import add_intent, all_intents
+
+add_intent(MY_INTENT, handler)
+
+# Verify registration
+intents = all_intents()
+assert "my_intent" in intents
+```
+
+For @route/@controller, registration is automatic via decorators.
+
+### Pipeline timeout
+
+**Symptom:** `Result.success = False`, `Result.error = TimeoutError`.
+
+**Fix:** Default timeouts: ephemeral=5s, standard=10s, critical=30s. Override per-intent:
+
+```python
+intent = Intent(name="slow_op", level=Level.CRITICAL, timeout=60.0)
+```
+
+Or check which processor is slow — `result.processors` lists what ran before the timeout.
+
+### Processor not found in pipeline
+
+**Symptom:** Pipeline skips a processor silently.
+
+**Fix:** Processor names must match exactly. Check registration:
+
+```python
+from evoid import register_processor
+register_processor("my_proc", my_processor)
+```
+
+Then reference by name: `processors=["validate", "my_proc", "handler"]`.
+
+### Context state not persisting between processors
+
+**Symptom:** Processor B doesn't see data written by Processor A.
+
+**Fix:** Ensure Processor A writes to `ctx.state`, not a local variable:
+
+```python
+# Wrong — local variable, lost after return
+async def proc_a(ctx: Context) -> dict:
+    data = {"key": "value"}
+    return data
+
+# Correct — write to shared state
+async def proc_a(ctx: Context) -> dict:
+    ctx.state["key"] = "value"
+    return {"saved": True}
+```
+
+### @route decorator not creating intent
+
+**Symptom:** Endpoint not responding.
+
+**Fix:** Ensure the Service is created and the decorator is called:
+
+```python
+from evoid.web.route import Service, get
+
+app = Service("my-api")  # Must be created
+
+@get("/users/{id}")      # Decorator registers automatically
+async def get_user(id: int) -> dict:
+    return {"id": id}
+```
+
+## Plugins
+
+### Plugin not loading
 
 **Symptom:** Engine not found when calling `resolve_engine()`.
 
-**Fix:** Verify the plugin is installed and the entry point is correct.
+**Fix:** Verify installation and entry point:
 
 ```bash
 pip list | grep evoid
 ```
 
-Check that `MANIFEST["entry_point"]` matches an importable `module:function` path. The module must be importable from the installed package.
+Check `MANIFEST["entry_point"]` matches an importable `module:function` path.
 
-## Connection refused (PostgreSQL)
+### Connection refused (PostgreSQL)
 
-**Symptom:** `ConnectionRefusedError` when first calling storage operations.
+**Symptom:** `ConnectionRefusedError` on first operation.
 
-**Fix:** Connections are lazy — they open on first use, not at `create_storage()`. Verify:
-1. PostgreSQL is running and accepting connections
-2. Connection URL uses `postgresql+asyncpg://` prefix (not plain `postgresql://`)
+**Fix:** Connections are lazy. Verify:
+1. PostgreSQL is running
+2. URL uses `postgresql+asyncpg://` (not `postgresql://`)
 3. Database and user exist
 
-```python
-# Wrong — will fail at first write
-storage = create_storage(url="postgresql://user:pass@localhost/evoid")
+### AttributeError: health()
 
-# Correct
-storage = create_storage(url="postgresql+asyncpg://user:pass@localhost/evoid")
-```
+**Symptom:** `AttributeError: 'SQLiteStorage' has no attribute 'health'`
 
-## AttributeError: health()
-
-**Symptom:** `AttributeError: 'SQLiteStorage' object has no attribute 'health'`
-
-**Fix:** `evoid-sqlite` doesn't implement `health()`. SmartStorage handles this defensively, but direct usage requires a wrapper:
+**Fix:** `evoid-sqlite` doesn't implement `health()`. SmartStorage handles this, but direct usage needs a wrapper:
 
 ```python
 class SafeSQLite:
     def __init__(self, path):
         self._storage = create_storage(path)
-
     async def health(self):
         try:
-            await self._storage.read("__health_check__")
+            await self._storage.read("__health__")
             return True
         except Exception:
             return False
-
     def __getattr__(self, name):
         return getattr(self._storage, name)
 ```
 
-## DI resolve() ValueError
+### DI ValueError on sync resolve
 
-**Symptom:** `ValueError: Service 'storage' has routing rules. Use resolve_async() instead.`
+**Symptom:** `ValueError: Service has routing rules. Use resolve_async() instead.`
 
-**Fix:** Services with routing rules must be resolved asynchronously:
+**Fix:** Use async resolution for routed services:
 
 ```python
-# Wrong — sync resolve with routing rules
-svc = di.resolve("storage")
-
-# Correct
 svc = await di.resolve_async("storage", ctx)
 ```
 
-## Auth: no provider found
+### Auth: no provider found
 
-**Symptom:** Authentication fails silently or raises about missing provider.
+**Symptom:** Authentication fails silently.
 
-**Fix:** The `authenticate` processor looks for `metadata["auth_provider"]` first, then falls back to `"default"`. If you register only one provider, name it `"default"`:
+**Fix:** Register as `"default"` or pass `auth_provider` in every intent's metadata:
 
 ```python
-# This won't work unless you pass auth_provider="custom" in every intent
-register_provider("custom", my_auth)
-
-# This works as fallback
 register_provider("default", my_auth)
 ```
 
-## Redis key collisions
+### Redis key collisions
 
-**Symptom:** Data appears corrupted or overwritten by another application.
+**Symptom:** Data corrupted or overwritten.
 
-**Fix:** Always set a prefix when sharing a Redis instance:
+**Fix:** Always set prefix:
 
 ```python
-# Bad — keys collide with other apps
-cache = create_cache(url="redis://localhost:6379")
-
-# Good — isolated key namespace
 cache = create_cache(url="redis://localhost:6379", prefix="myapp:")
 ```
 
-## SmartStorage: backend not found at runtime
+### SmartStorage: backend not found at runtime
 
-**Symptom:** `PluginError: Engine 'scylla' not found` on first write/read.
+**Symptom:** `PluginError: Engine 'scylla' not found` on first use.
 
-**Fix:** SmartStorage resolves backends lazily. The error appears on first use, not at construction. Ensure the backend plugin is installed:
+**Fix:** SmartStorage resolves lazily. Install the backend:
 
 ```bash
 pip install evoid-scylla
 ```
 
-## ScyllaDB: slow under high load
-
-**Symptom:** Latency spikes with many concurrent operations.
-
-**Cause:** `cassandra-driver` is synchronous. Every operation goes through `run_in_executor` → thread pool. This adds overhead compared to natively async drivers.
-
-**Fix:** For write-heavy workloads, prefer PostgreSQL or Redis. Use Scylla for high-throughput reads where eventual consistency is acceptable.
-
-## Namespace confusion
+### Namespace confusion
 
 **Symptom:** Data not found despite being written.
 
-**Fix:** Storage engines default to `namespace="default"`. If you write with a custom namespace, you must read with the same one:
+**Fix:** Default namespace is `"default"`. Match namespaces on read/write:
 
 ```python
 await storage.write("key", "value", namespace="custom")
-result = await storage.read("key")  # → None (wrong namespace)
-result = await storage.read("key", namespace="custom")  # → "value"
+result = await storage.read("key", namespace="custom")  # Must match
 ```
 
-## Import errors after install
+### Import errors
 
 **Symptom:** `ModuleNotFoundError: No module named 'evoid_sqlite'`
 
-**Fix:** EVOID plugins use underscores in Python imports but hyphens in pip:
+**Fix:** Pip uses hyphens, Python uses underscores:
 
 ```bash
-pip install evoid-sqlite  # hyphen in pip name
+pip install evoid-sqlite      # hyphen
 ```
-
 ```python
-from evoid_sqlite import create_storage  # underscore in import
+from evoid_sqlite import ...  # underscore
 ```
