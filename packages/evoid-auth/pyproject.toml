@@ -2,6 +2,7 @@
 name = "evoid-auth"
 version = "0.1.0"
 description = "Auth engine for EVOID — bring your own provider"
+readme = "README.md"
 keywords = ["evoid", "iop", "intent-oriented", "auth"]
 requires-python = ">=3.12"
 license = "MIT"
@@ -19,3 +20,4 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["evoid_auth"]
+force-include = { "README.md" = "README.md" }

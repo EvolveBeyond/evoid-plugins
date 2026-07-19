@@ -2,6 +2,7 @@
 name = "evoid-postgresql"
 version = "0.1.0"
 description = "PostgreSQL storage engine via SQLAlchemy for EVOID"
+readme = "README.md"
 keywords = ["evoid", "iop", "intent-oriented", "postgresql"]
 requires-python = ">=3.12"
 license = "MIT"
@@ -20,3 +21,4 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["evoid_postgresql"]
+force-include = { "README.md" = "README.md" }

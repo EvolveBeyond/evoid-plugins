@@ -2,6 +2,7 @@
 name = "evoid-dashboard"
 version = "0.1.0"
 description = "Monitoring dashboard for EVOID — service map, data lineage, DB viewer, logs"
+readme = "README.md"
 keywords = ["evoid", "iop", "intent-oriented", "dashboard"]
 requires-python = ">=3.12"
 license = "MIT"
@@ -19,3 +20,4 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["evoid_dashboard"]
+force-include = { "README.md" = "README.md" }
