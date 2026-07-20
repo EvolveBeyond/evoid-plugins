@@ -1,0 +1,49 @@
+[project]
+name = "evoid-cluster"
+version = "0.1.0"
+description = "Cluster plugin for evoid — connect multiple nodes into a unified system"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.12"
+authors = [
+    { name = "EvolveBeyond", email = "pakrohk@gmail.com" }
+]
+keywords = ["evoid", "cluster", "distributed", "multi-node", "mesh"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries",
+]
+dependencies = [
+    "evoid>=0.4.0",
+    "websockets>=12.0",
+    "cryptography>=42.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "ruff>=0.4.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/EvolveBeyond/evoid-plugins"
+Repository = "https://github.com/EvolveBeyond/evoid-plugins"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["evoid_cluster"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "C90", "I", "N", "UP"]
+ignore = ["E501", "N802", "C901"]

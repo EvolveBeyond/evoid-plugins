@@ -1,0 +1,11 @@
+{
+  "name": "evoid-cluster",
+  "version": "0.1.0",
+  "type": "engine",
+  "description": "Cluster plugin for evoid — connect multiple nodes into a unified system via message bus",
+  "author": "EvolveBeyond",
+  "entry_point": "evoid_cluster:register_plugin",
+  "dependencies": ["evoid>=0.4.0", "websockets>=12.0", "cryptography>=42.0"],
+  "evoid_version": ">=0.4.0",
+  "tags": ["cluster", "distributed", "multi-node", "mesh"]
+}

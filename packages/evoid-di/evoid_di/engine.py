@@ -37,6 +37,7 @@ class DIEngine:
         rules_config: dict | None = None,
         implementations: dict[str, Any] | None = None,
         services_config: dict | None = None,
+        max_per_user: int = 1000,
     ):
         # Level 1: Simple registry
         self._factories: dict[str, Any] = {}
@@ -45,6 +46,7 @@ class DIEngine:
         # Level 2: Cache
         self._singletons: dict[str, Any] = {}
         self._per_user: dict[tuple[str, str], Any] = {}
+        self._max_per_user = max_per_user
 
         # Level 3: Advanced routing
         self._impl_registry = implementations or {}
@@ -98,6 +100,7 @@ class DIEngine:
                 raise ValueError(f"'{name}' requires user_id for per_user scope")
             key = (name, user_id)
             if key not in self._per_user:
+                self._evict_per_user_if_needed()
                 self._per_user[key] = self._create(factory)
             return self._per_user[key]
 
@@ -140,6 +143,7 @@ class DIEngine:
         if scope == "per_user" and user_id:
             key = (name, user_id)
             if key not in self._per_user:
+                self._evict_per_user_if_needed()
                 self._per_user[key] = self._create_impl(impl_name)
             return self._per_user[key]
 
@@ -192,6 +196,20 @@ class DIEngine:
         self._singletons.clear()
         self._per_user.clear()
 
+    def clear_user(self, user_id: str) -> None:
+        """Clear cached instances for a specific user."""
+        keys_to_remove = [k for k in self._per_user if k[1] == user_id]
+        for key in keys_to_remove:
+            del self._per_user[key]
+
+    def _evict_per_user_if_needed(self) -> None:
+        """Evict oldest entries if per-user cache exceeds max."""
+        if len(self._per_user) > self._max_per_user:
+            excess = len(self._per_user) - self._max_per_user
+            keys = iter(self._per_user)
+            for _ in range(excess):
+                del self._per_user[next(keys)]
+
     def list_services(self) -> list[str]:
         """List all registered services."""
-        return list(set(list(self._factories.keys()) + list(self._rule_sets.keys())))
+        return list(self._factories.keys() | self._rule_sets.keys())

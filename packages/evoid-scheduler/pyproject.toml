@@ -1,0 +1,51 @@
+[project]
+name = "evoid-scheduler"
+version = "1.0.0"
+description = "Priority-aware scheduler with system metrics and adaptive concurrency for EVOID"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.12"
+authors = [
+    { name = "EvolveBeyond", email = "pakrohk@gmail.com" }
+]
+keywords = ["evoid", "scheduler", "priority", "load-balancing", "system-metrics"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: System :: Monitoring",
+    "Topic :: System :: Distributed Computing",
+]
+dependencies = [
+    "evoid>=0.4.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/EvolveBeyond/evoid-plugins"
+Documentation = "https://evolvebeyond.github.io/EVOID/"
+Repository = "https://github.com/EvolveBeyond/evoid-plugins"
+Issues = "https://github.com/EvolveBeyond/evoid-plugins/issues"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "ruff>=0.4.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["evoid_scheduler"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "C90", "I", "N", "UP"]
+ignore = ["E501", "N802", "C901"]

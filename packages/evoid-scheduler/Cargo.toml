@@ -1,0 +1,20 @@
+[package]
+name = "evoid-scheduler"
+version = "0.1.0"
+edition = "2021"
+description = "Priority-aware scheduler with system metrics for EVOID"
+license = "MIT"
+
+[lib]
+name = "evoid_scheduler"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = "0.20", features = ["extension-module"] }
+parking_lot = "0.12"
+sysinfo = "0.30"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true

@@ -15,11 +15,22 @@ IOP integration:
 from __future__ import annotations
 
 import asyncio
+import inspect
 import time
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
 from .logger import get_logger
+
+
+def _check_wants_ctx(fn: Callable) -> bool:
+    """Check if a function accepts a ctx parameter. Uses inspect.signature for robustness."""
+    try:
+        sig = inspect.signature(fn)
+        params = list(sig.parameters.keys())
+        return len(params) > 0 and params[0] in ("ctx", "context", "task_ctx")
+    except (ValueError, TypeError):
+        return False
 
 
 @dataclass
@@ -59,11 +70,19 @@ class TaskScheduler:
     # ============================================================
 
     def run(self, func: Callable, *args: Any, **kwargs: Any) -> TaskDef:
-        """Fire-and-forget. Runs once in background."""
+        """Fire-and-forget. Runs once in background. Cleans up after completion."""
         task = TaskDef(name=func.__name__, func=func)
         self._tasks.append(task)
-        asyncio.create_task(self._exec_once(task, args, kwargs))
+        t = asyncio.create_task(self._exec_once(task, args, kwargs))
+        t.add_done_callback(lambda _: self._cleanup_task(task))
         return task
+
+    def _cleanup_task(self, task: TaskDef) -> None:
+        """Remove completed one-shot task from list."""
+        try:
+            self._tasks.remove(task)
+        except ValueError:
+            pass
 
     def task(
         self,
@@ -122,13 +141,14 @@ class TaskScheduler:
         """
         def decorator(fn: Callable) -> Callable:
             processor_name = name or fn.__name__
+            _wants_ctx = _check_wants_ctx(fn)
 
             async def processor(ctx) -> dict:
                 """Wrapper that runs the task and returns a result."""
                 task_ctx = TaskContext(task_name=processor_name, started=True)
                 try:
                     if asyncio.iscoroutinefunction(fn):
-                        if len(fn.__code__.co_varnames) > 0 and fn.__code__.co_varnames[0] == "ctx":
+                        if _wants_ctx:
                             result = await fn(task_ctx)
                         else:
                             result = await fn()

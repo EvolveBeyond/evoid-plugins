@@ -48,7 +48,8 @@ class SQLiteStorage:
         if self._conn:
             await self._conn.close()
 
-    async def read(self, key: str, namespace: str = "default") -> Any | None:
+    async def read(self, key: str, **kwargs) -> Any | None:
+        namespace = kwargs.get("namespace", "default")
         if not self._conn:
             await self.connect()
         cursor = await self._conn.execute(
@@ -60,17 +61,19 @@ class SQLiteStorage:
             return json.loads(row[0])
         return None
 
-    async def write(self, key: str, value: Any, namespace: str = "default") -> bool:
+    async def write(self, key: str, data: dict[str, Any], **kwargs) -> bool:
+        namespace = kwargs.get("namespace", "default")
         if not self._conn:
             await self.connect()
         await self._conn.execute(
             "INSERT OR REPLACE INTO kv_store (key, value, namespace) VALUES (?, ?, ?)",
-            (key, json.dumps(value), namespace),
+            (key, json.dumps(data), namespace),
         )
         await self._conn.commit()
         return True
 
-    async def delete(self, key: str, namespace: str = "default") -> bool:
+    async def delete(self, key: str, **kwargs) -> bool:
+        namespace = kwargs.get("namespace", "default")
         if not self._conn:
             await self.connect()
         cursor = await self._conn.execute(
@@ -79,6 +82,15 @@ class SQLiteStorage:
         )
         await self._conn.commit()
         return cursor.rowcount > 0
+
+    async def health(self) -> bool:
+        try:
+            if not self._conn:
+                await self.connect()
+            await self._conn.execute("SELECT 1")
+            return True
+        except Exception:
+            return False
 
     async def list_keys(self, namespace: str = "default") -> list[str]:
         if not self._conn:

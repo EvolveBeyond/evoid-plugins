@@ -1,0 +1,11 @@
+{
+  "name": "evoid-transport",
+  "version": "0.1.0",
+  "type": "engine",
+  "description": "Low-latency UDP transport for EVOID — ENet-level performance via binary protocol",
+  "author": "EvolveBeyond",
+  "entry_point": "evoid_transport:register_plugin",
+  "dependencies": ["evoid>=0.4.0", "evoid-godot>=1.0.0"],
+  "evoid_version": ">=0.4.0",
+  "tags": ["transport", "udp", "low-latency", "realtime", "godot"]
+}

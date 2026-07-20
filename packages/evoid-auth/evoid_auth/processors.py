@@ -2,6 +2,9 @@
 
 authenticate: extract token from request, call provider, set ctx.state
 authorize: check role/permission from ctx.state
+
+IOP: processors return dicts, never raise. Errors stored in ctx.state
+for downstream processors to inspect.
 """
 
 from __future__ import annotations
@@ -23,33 +26,38 @@ async def authenticate(ctx: Any) -> dict:
         - user: authenticated user info
         - role: user role
         - auth_method: which provider was used
+        - authenticated: bool
+        - auth_error: str | None (on failure)
     """
     metadata = ctx.intent.metadata
 
-    # Extract token from various sources
     token = _extract_token(metadata)
 
     if not token:
-        raise PermissionError("No authentication token provided")
+        ctx.state["authenticated"] = False
+        ctx.state["auth_error"] = "No authentication token provided"
+        return {"authenticated": False, "error": "no_token"}
 
-    # Resolve provider
     provider_name = metadata.get("auth_provider", "default")
     try:
         provider = resolve_provider(provider_name)
     except ValueError:
-        raise PermissionError(f"Auth provider '{provider_name}' not configured")
+        ctx.state["authenticated"] = False
+        ctx.state["auth_error"] = f"Auth provider '{provider_name}' not configured"
+        return {"authenticated": False, "error": "provider_not_found"}
 
-    # Call provider
     try:
         user_info = await provider(token)
     except Exception as e:
-        raise PermissionError(f"Authentication failed: {e}")
+        ctx.state["authenticated"] = False
+        ctx.state["auth_error"] = f"Authentication failed: {e}"
+        return {"authenticated": False, "error": "provider_failed"}
 
-    # Set context
     ctx.state["user"] = user_info.get("user", user_info)
     ctx.state["role"] = user_info.get("role", "user")
     ctx.state["auth_method"] = provider_name
     ctx.state["authenticated"] = True
+    ctx.state["auth_error"] = None
 
     return {"authenticated": True, "user": ctx.state["user"]}
 
@@ -59,46 +67,40 @@ async def authorize(ctx: Any) -> dict:
 
     Reads from ctx.state:
         - role: set by authenticate processor
+        - authenticated: set by authenticate processor
 
     Reads from ctx.intent.metadata:
         - required_role: minimum role needed
         - required_roles: list of acceptable roles
 
-    Raises PermissionError if not authorized.
+    Returns error dict if not authorized (never raises).
     """
-    # Must be authenticated first
     if not ctx.state.get("authenticated"):
-        raise PermissionError("Not authenticated — run 'authenticate' first")
+        return {"authorized": False, "error": "not_authenticated"}
 
     role = ctx.state.get("role", "user")
     metadata = ctx.intent.metadata
 
-    # Check single role requirement
     required_role = metadata.get("required_role")
     if required_role:
         if not _role_has_permission(role, required_role):
-            raise PermissionError(
-                f"Insufficient permissions: need '{required_role}', have '{role}'"
-            )
+            ctx.state["auth_error"] = f"Need '{required_role}', have '{role}'"
+            return {"authorized": False, "error": "insufficient_permissions"}
 
-    # Check multiple roles
     required_roles = metadata.get("required_roles")
     if required_roles:
         if role not in required_roles:
-            raise PermissionError(
-                f"Role '{role}' not in allowed roles: {required_roles}"
-            )
+            ctx.state["auth_error"] = f"Role '{role}' not in {required_roles}"
+            return {"authorized": False, "error": "role_not_allowed"}
 
     return {"authorized": True, "role": role}
 
 
 def _extract_token(metadata: dict[str, Any]) -> str | None:
     """Extract auth token from request metadata."""
-    # 1. Explicit token
     if "token" in metadata:
         return metadata["token"]
 
-    # 2. Authorization header
     headers = metadata.get("headers", {})
     auth_header = headers.get("authorization", "")
 
@@ -108,17 +110,18 @@ def _extract_token(metadata: dict[str, Any]) -> str | None:
     if auth_header.startswith("Token "):
         return auth_header[6:]
 
-    # 3. API Key header
     api_key = headers.get("x-api-key")
     if api_key:
         return api_key
 
-    # 4. Query parameter
-    token = metadata.get("token")
-    if token:
-        return token
+    query_token = metadata.get("query_token")
+    if query_token:
+        return query_token
 
     return None
+
+
+_ROLE_HIERARCHY = {"admin": 4, "editor": 3, "viewer": 2, "guest": 1}
 
 
 def _role_has_permission(user_role: str, required: str) -> bool:
@@ -126,7 +129,6 @@ def _role_has_permission(user_role: str, required: str) -> bool:
 
     Hierarchy: admin > editor > viewer > guest
     """
-    hierarchy = {"admin": 4, "editor": 3, "viewer": 2, "guest": 1}
-    user_level = hierarchy.get(user_role, 0)
-    required_level = hierarchy.get(required, 0)
+    user_level = _ROLE_HIERARCHY.get(user_role, 0)
+    required_level = _ROLE_HIERARCHY.get(required, 0)
     return user_level >= required_level

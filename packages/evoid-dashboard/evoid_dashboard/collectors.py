@@ -5,12 +5,14 @@ from __future__ import annotations
 from typing import Any
 
 
-def collect_services() -> list[dict[str, Any]]:
+def collect_services(intents=None, processors=None) -> list[dict[str, Any]]:
     """Collect all registered services and their intents."""
     from evoid import all_intents, all_processors
 
-    intents = all_intents()
-    processors = all_processors()
+    if intents is None:
+        intents = all_intents()
+    if processors is None:
+        processors = all_processors()
 
     # Group by service (intent name prefix)
     services: dict[str, dict] = {}
@@ -40,11 +42,12 @@ def collect_services() -> list[dict[str, Any]]:
     return list(services.values())
 
 
-def collect_intents() -> list[dict[str, Any]]:
+def collect_intents(intents=None) -> list[dict[str, Any]]:
     """Collect all registered intents with full details."""
     from evoid import all_intents
 
-    intents = all_intents()
+    if intents is None:
+        intents = all_intents()
     return [
         {
             "name": name,
@@ -57,11 +60,12 @@ def collect_intents() -> list[dict[str, Any]]:
     ]
 
 
-def collect_processors() -> list[dict[str, Any]]:
+def collect_processors(processors=None) -> list[dict[str, Any]]:
     """Collect all registered processors."""
     from evoid import all_processors
 
-    processors = all_processors()
+    if processors is None:
+        processors = all_processors()
     return [
         {
             "name": name,

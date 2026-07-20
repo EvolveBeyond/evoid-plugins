@@ -42,10 +42,14 @@ async def app(scope: dict, receive: Any, send: Any) -> None:
     elif path == "/api/system":
         body = _json(collect_system_info())
     elif path == "/api/all":
+        # Fetch registry data once, pass to collectors
+        from evoid import all_intents, all_processors
+        intents = all_intents()
+        processors = all_processors()
         body = _json({
-            "services": collect_services(),
-            "intents": collect_intents(),
-            "processors": collect_processors(),
+            "services": collect_services(intents, processors),
+            "intents": collect_intents(intents),
+            "processors": collect_processors(processors),
             "messages": collect_message_history(),
             "databases": collect_db_tables(),
             "pipelines": collect_pipeline_overrides(),
@@ -242,8 +246,13 @@ setInterval(refresh, 5000);
 </html>"""
 
 
-def create_dashboard(host: str = "0.0.0.0", port: int = 8001) -> None:
-    """Run the dashboard ASGI server."""
+def create_dashboard(host: str = "0.0.0.0", port: int = 8001):
+    """Create the dashboard ASGI app. Returns the ASGI app object."""
+    return app
+
+
+def run_dashboard(host: str = "0.0.0.0", port: int = 8001) -> None:
+    """Run the dashboard ASGI server (blocking)."""
     import uvicorn
     print(f"EVOID Dashboard: http://{host}:{port}")
     uvicorn.run(app, host=host, port=port)

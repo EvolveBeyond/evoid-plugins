@@ -8,6 +8,8 @@ from __future__ import annotations
 import json
 from typing import Any
 
+from sqlalchemy import text
+
 from evoid.engines.plugin import register
 
 MANIFEST = {
@@ -35,12 +37,10 @@ class PostgresStorage:
             return
 
         from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
-        from sqlalchemy import text
 
         self._engine = create_async_engine(self.url, echo=False)
         self._session_factory = async_sessionmaker(self._engine, expire_on_commit=False)
 
-        # Create table if not exists
         async with self._engine.begin() as conn:
             await conn.execute(text("""
                 CREATE TABLE IF NOT EXISTS kv_store (
@@ -52,9 +52,9 @@ class PostgresStorage:
                 )
             """))
 
-    async def write(self, key: str, data: dict[str, Any], namespace: str = "default", **kwargs) -> bool:
+    async def write(self, key: str, data: dict[str, Any], **kwargs) -> bool:
+        namespace = kwargs.get("namespace", "default")
         await self._setup()
-        from sqlalchemy import text
 
         async with self._engine.begin() as conn:
             await conn.execute(
@@ -67,9 +67,9 @@ class PostgresStorage:
             )
         return True
 
-    async def read(self, key: str, namespace: str = "default", **kwargs) -> Any | None:
+    async def read(self, key: str, **kwargs) -> Any | None:
+        namespace = kwargs.get("namespace", "default")
         await self._setup()
-        from sqlalchemy import text
 
         async with self._engine.begin() as conn:
             result = await conn.execute(
@@ -81,9 +81,9 @@ class PostgresStorage:
                 return json.loads(row[0]) if isinstance(row[0], str) else row[0]
         return None
 
-    async def delete(self, key: str, namespace: str = "default", **kwargs) -> bool:
+    async def delete(self, key: str, **kwargs) -> bool:
+        namespace = kwargs.get("namespace", "default")
         await self._setup()
-        from sqlalchemy import text
 
         async with self._engine.begin() as conn:
             result = await conn.execute(
@@ -95,7 +95,6 @@ class PostgresStorage:
     async def health(self) -> bool:
         try:
             await self._setup()
-            from sqlalchemy import text
             async with self._engine.begin() as conn:
                 await conn.execute(text("SELECT 1"))
             return True

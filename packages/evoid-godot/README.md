@@ -227,6 +227,108 @@ subscribe("game:my-game:player_shot", handle_shot)
 
 ---
 
+## Web Hosting (Instant Game Loading)
+
+Serve Godot WebGL exports with zero perceived load time. Users see a splash screen instantly, the game streams in the background, and repeat visits are instant via Service Worker.
+
+### Quick Start
+
+```python
+from evoid_godot import GameHost
+
+host = GameHost()
+host.register_build("my-game", "builds/my-game/", title="My Game")
+
+from starlette.routing import Mount
+app = Starlette(routes=[Mount("/game", app=host.create_router())])
+```
+
+Open `/game/my-game/` — splash appears instantly, game loads in background.
+
+### Multi-Game
+
+```python
+from evoid_godot import GameHost, SplashConfig
+
+host = GameHost()
+
+# Game 1 — default splash
+host.register_build("tank-battle", "builds/tank-battle/", title="Tank Battle")
+
+# Game 2 — custom splash
+host.register_build(
+    "card-arena", "builds/card-arena/", title="Card Arena",
+    splash=SplashConfig(
+        bg_color="#0d1117",
+        accent_color="#58a6ff",
+        subtitle="Multiplayer Card Game",
+    ),
+)
+
+# /game/tank-battle/ and /game/card-arena/ — both instant
+```
+
+### Custom Splash
+
+```python
+from evoid_godot import SplashConfig
+
+splash = SplashConfig(
+    bg_color="#0d1117",       # dark background
+    text_color="#ffffff",      # white text
+    accent_color="#58a6ff",   # blue progress bar
+    logo_url="/logo.png",     # optional logo
+    title="My Game",
+    subtitle="Loading...",
+)
+host.register_build("my-game", "builds/my-game/", splash=splash)
+```
+
+### One-Liner
+
+```python
+from evoid_godot import setup_game_hosting
+
+host = setup_game_hosting("my-game", "builds/my-game/", title="My Game")
+```
+
+### Godot Side (WebGL)
+
+```gdscript
+func _ready():
+    # Auto-detect WebGL, connect to same-origin server
+    EvoidApp.connect_to_server_auto()
+
+    # Or explicit:
+    # EvoidApp.connect_to_server("wss://server.com", "my-game")
+```
+
+### How It Works
+
+```
+User visits /game/{id}/
+  → HTML splash (<100ms, inline CSS)
+  → Service Worker registers
+  → engine.wasm streams in background
+  → game.pck loads in 256KB chunks
+  → Game starts, splash fades
+  → Repeat: instant (SW cache)
+```
+
+### Routes
+
+| Route | Description |
+|-------|-------------|
+| `GET /` | Splash HTML (inline, instant) |
+| `GET /engine.wasm` | Godot engine (cached forever) |
+| `GET /game.pck` | Game data (or `?chunk=N&size=256K`) |
+| `GET /chunk/{n}` | PCK chunk for progressive load |
+| `GET /manifest.json` | Build manifest |
+| `GET /sw.js` | Generated Service Worker |
+| `GET /assets/*` | Static game assets |
+
+---
+
 ## Dependencies
 
 - `evoid>=0.4.0` (required)

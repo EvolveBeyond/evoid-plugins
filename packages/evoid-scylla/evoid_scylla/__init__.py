@@ -8,6 +8,7 @@ IOP: Plugin registry pattern — register, resolve, use.
 
 from __future__ import annotations
 
+import asyncio
 import json
 from typing import Any
 
@@ -48,7 +49,7 @@ class ScyllaStorage:
         from cassandra.cluster import Cluster
         from cassandra.policies import DCAwareRoundRobinPolicy
 
-        loop = __import__("asyncio").get_event_loop()
+        loop = asyncio.get_running_loop()
 
         def _connect():
             cluster = Cluster(
@@ -75,7 +76,7 @@ class ScyllaStorage:
     async def _execute(self, query: str, params: dict | None = None):
         if self._session is None:
             await self._setup()
-        loop = __import__("asyncio").get_event_loop()
+        loop = asyncio.get_running_loop()
         if params:
             return await loop.run_in_executor(
                 None, lambda: self._session.execute(query, params)
@@ -84,14 +85,16 @@ class ScyllaStorage:
             None, lambda: self._session.execute(query)
         )
 
-    async def write(self, key: str, data: dict[str, Any], namespace: str = "default", **kwargs) -> bool:
+    async def write(self, key: str, data: dict[str, Any], **kwargs) -> bool:
+        namespace = kwargs.get("namespace", "default")
         await self._execute(
             "INSERT INTO kv_store (namespace, key, value) VALUES (%(ns)s, %(k)s, %(v)s)",
             {"ns": namespace, "k": key, "v": json.dumps(data)},
         )
         return True
 
-    async def read(self, key: str, namespace: str = "default", **kwargs) -> Any | None:
+    async def read(self, key: str, **kwargs) -> Any | None:
+        namespace = kwargs.get("namespace", "default")
         result = await self._execute(
             "SELECT value FROM kv_store WHERE namespace = %(ns)s AND key = %(k)s",
             {"ns": namespace, "k": key},
@@ -101,12 +104,13 @@ class ScyllaStorage:
             return json.loads(row.value)
         return None
 
-    async def delete(self, key: str, namespace: str = "default", **kwargs) -> bool:
-        await self._execute(
+    async def delete(self, key: str, **kwargs) -> bool:
+        namespace = kwargs.get("namespace", "default")
+        result = await self._execute(
             "DELETE FROM kv_store WHERE namespace = %(ns)s AND key = %(k)s",
             {"ns": namespace, "k": key},
         )
-        return True
+        return result is not None
 
     async def health(self) -> bool:
         try:

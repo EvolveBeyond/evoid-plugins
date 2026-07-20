@@ -11,11 +11,13 @@ from evoid import Intent, Level, publish, subscribe
 from .topics import Topics
 
 
-async def game_intent_handler(intent: Intent) -> dict:
+async def game_intent_handler(ctx: Any) -> dict:
     """Handle a game intent from Godot client.
 
+    IOP-compliant: takes Context, reads ctx.intent, writes ctx.state.
     Routes the intent to the message bus for processing.
     """
+    intent = ctx.intent
     game_id = intent.metadata.get("game_id", "default")
     player_id = intent.metadata.get("player_id", "unknown")
     action = intent.metadata.get("action", intent.name)
@@ -35,11 +37,14 @@ async def game_intent_handler(intent: Intent) -> dict:
         source=f"godot:{player_id}",
     )
 
-    return {
+    # Write result to context state
+    ctx.state["game_result"] = {
         "status": "ok",
         "action": action,
         "player_id": player_id,
     }
+
+    return {"status": "ok", "action": action, "player_id": player_id}
 
 
 def create_game_handler() -> Any:
@@ -149,3 +154,22 @@ async def _handle_chat_message(intent: Intent) -> dict:
     )
 
     return {"sent": True}
+
+
+def setup_game_hosting(
+    game_id: str,
+    build_dir: str,
+    title: str = "",
+    splash: "SplashConfig | None" = None,
+) -> "GameHost":
+    """One-liner: register a game build and get a configured host.
+
+    Example:
+        host = setup_game_hosting("my-game", "builds/my-game/", title="My Game")
+        app = Starlette(routes=[Mount("/game", app=host.create_router())])
+    """
+    from .hosting import GameHost
+
+    host = GameHost()
+    host.register_build(game_id, build_dir, title=title, splash=splash)
+    return host
