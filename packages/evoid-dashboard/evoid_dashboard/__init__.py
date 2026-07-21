@@ -40,6 +40,7 @@ MANIFEST = {
 
 
 def register_plugin():
+    """Called when the plugin is loaded (legacy path)."""
     from evoid.engines.plugin import register
     register(
         name="dashboard",
@@ -48,3 +49,12 @@ def register_plugin():
         version="0.1.0",
         description="Monitoring dashboard for EVOID",
     )
+
+
+def register_handlers(host: str = "0.0.0.0", port: int = 8001) -> None:
+    """Register dashboard as an adapter handler.
+
+    IOP: Dashboard is an adapter that exposes monitoring data.
+    """
+    # Dashboard doesn't use standard storage/cache Intents
+    # It's an adapter that creates its own ASGI app

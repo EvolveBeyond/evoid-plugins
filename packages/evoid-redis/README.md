@@ -7,14 +7,14 @@
 <h1 align="center">evoid-redis</h1>
 
 <p align="center">
-  <strong>Redis cache engine for EVOID with TTL support</strong>
+  <strong>Redis cache engine for EVOID — Intent Handler system</strong>
 </p>
 
 <p align="center">
   <a href="#quick-start">Quick Start</a> •
-  <a href="#api">API</a> •
-  <a href="#installation">Install</a> •
-  <a href="https://evolvebeyond.github.io/EVOID/">Docs</a>
+  <a href="#intent-handler">Intent Handler</a> •
+  <a href="#configuration">Config</a> •
+  <a href="#api">API</a>
 </p>
 
 ---
@@ -25,28 +25,53 @@
 pip install evoid-redis
 ```
 
+### Method 1: Intent Handler (Recommended)
+
+```python
+from evoid_redis import register_handlers
+from evoid.core.cache import cache_get, cache_set, cache_delete
+
+# Register Redis as cache handler
+register_handlers(url="redis://localhost:6379", prefix="myapp:")
+
+# Use high-level API — goes through Intent pipeline
+await cache_set("session:abc", {"user": "Alice"}, ttl=300)
+data = await cache_get("session:abc")
+await cache_delete("session:abc")
+```
+
+### Method 2: Direct API
+
 ```python
 from evoid_redis import create_cache
 
-# Connect to Redis
-cache = create_cache("redis://localhost:6379")
-
-# Set with TTL (seconds)
-await cache.set("session:abc", {"user": "Alice"}, ttl=300)
-
-# Get
-data = await cache.get("session:abc")
-print(data)  # {"user": "Alice"}
-
-# Check existence
-exists = await cache.exists("session:abc")
-
-# Delete
-await cache.delete("session:abc")
-
-# Health check
-ok = await cache.health()
+cache = create_cache("redis://localhost:6379", prefix="myapp:")
+await cache.set("key", {"data": "value"}, ttl=300)
+data = await cache.get("key")
 ```
+
+---
+
+## Intent Handler
+
+evoid-redis registers these Intent handlers:
+
+| Intent | Handler | Description |
+|--------|---------|-------------|
+| `cache.get` | `handle_get` | Get value from Redis |
+| `cache.set` | `handle_set` | Set value with optional TTL |
+| `cache.delete` | `handle_delete` | Delete key |
+| `cache.exists` | `handle_exists` | Check key existence |
+| `cache.health` | `handle_health` | Ping Redis server |
+
+### How it works
+
+1. `register_handlers()` registers Intent handlers for cache operations
+2. `cache_get()` / `cache_set()` create Intents and execute through pipeline
+3. Pipeline routes to Redis handler
+4. Handler connects to Redis and performs operation
+
+---
 
 ## Configuration
 
@@ -56,54 +81,61 @@ ok = await cache.health()
 [engines]
 cache = "redis"
 
-[engines.redis]
+[engines.options.redis]
 url = "redis://localhost:6379"
-prefix = "evoid:"
+prefix = "myapp:"
 ```
 
 ### Python
 
 ```python
-from evoid_redis import create_cache
+from evoid.config import config
 
-cache = create_cache(
-    url="redis://localhost:6379",
-    prefix="myapp:",
+app = config(
+    engines={
+        "cache": "redis",
+        "options": {
+            "redis": {
+                "url": "redis://prod:6379",
+                "prefix": "production:",
+            },
+        },
+    },
 )
 ```
 
+---
+
 ## API
 
-### `create_cache(url: str, prefix: str) -> RedisCache`
+### `register_handlers(url, prefix)`
 
-Factory function. Creates and returns a Redis cache engine.
+Register Redis as Intent handlers.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `url` | `str` | `redis://localhost:6379` | Redis connection URL |
-| `prefix` | `str` | `evoid:` | Key prefix for all operations |
+| `prefix` | `str` | `evoid:` | Key prefix |
+
+### `create_cache(url, prefix) -> RedisCache`
+
+Factory function for direct API access.
 
 ### Methods
 
 | Method | Signature | Returns | Description |
 |--------|-----------|---------|-------------|
 | `get` | `async get(key: str)` | `Any \| None` | Get value (auto JSON decode) |
-| `set` | `async set(key: str, value: Any, ttl: float \| None)` | `bool` | Set value with optional TTL |
+| `set` | `async set(key: str, value: Any, ttl: int \| None)` | `bool` | Set value with optional TTL |
 | `delete` | `async delete(key: str)` | `bool` | Delete key |
 | `exists` | `async exists(key: str)` | `bool` | Check key exists |
 | `health` | `async health()` | `bool` | Ping Redis |
-| `close` | `async close()` | `None` | Close connection |
 
-## How it works
-
-- Uses `redis[hiredis]` for async Redis access
-- All keys are prefixed (default `evoid:`) to avoid collisions
-- Values are JSON serialized/deserialized automatically
-- TTL is handled via Redis `SETEX` command
-- Health check pings the Redis server
+---
 
 ## Dependencies
 
+- `evoid>=0.4.0`
 - `redis[hiredis]>=5.0.0`
 
 ## Links

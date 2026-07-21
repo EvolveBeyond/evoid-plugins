@@ -7,14 +7,14 @@
 <h1 align="center">evoid-auth</h1>
 
 <p align="center">
-  <strong>Bring-your-own-provider authentication for EVOID</strong>
+  <strong>Bring-your-own-provider authentication — Intent Handler system</strong>
 </p>
 
 <p align="center">
   <a href="#quick-start">Quick Start</a> •
-  <a href="#api">API</a> •
-  <a href="#installation">Install</a> •
-  <a href="https://evolvebeyond.github.io/EVOID/">Docs</a>
+  <a href="#intent-handler">Intent Handler</a> •
+  <a href="#configuration">Config</a> •
+  <a href="#api">API</a>
 </p>
 
 ---
@@ -25,12 +25,13 @@
 pip install evoid-auth
 ```
 
-No forced JWT. Write your own auth logic as a plain async function.
+### Method 1: Intent Handler (Recommended)
 
 ```python
-from evoid_auth import register_provider
+from evoid_auth import register_provider, register_handlers
+from evoid.core.extend import before
 
-# Your auth logic — anything that validates a token
+# Register your auth logic
 async def my_auth(token: str) -> dict:
     user = await db.find_by_token(token)
     if not user:
@@ -38,23 +39,44 @@ async def my_auth(token: str) -> dict:
     return {"user": user.name, "role": user.role}
 
 register_provider("my_auth", my_auth)
-```
 
-Wire it to the pipeline:
+# Register auth as Intent handlers
+register_handlers()
 
-```python
-from evoid.core.extend import before
-
+# Wire to pipeline
 before("GET:/users", "authenticate")
 before("POST:/admin", "authenticate")
 ```
 
-## How it works
+### Method 2: Direct API
 
-1. **`authenticate` processor** extracts a token from the request (headers, query, metadata)
-2. Calls your registered provider function
-3. Writes `user`, `role`, and `auth_method` to `ctx.state`
-4. **`authorize` processor** checks `ctx.state["role"]` against required roles
+```python
+from evoid_auth import authenticate, authorize, register_provider
+
+register_provider("jwt", jwt_auth_fn)
+# authenticate and authorize are pipeline processors
+```
+
+---
+
+## Intent Handler
+
+evoid-auth registers these Intent handlers:
+
+| Intent | Handler | Description |
+|--------|---------|-------------|
+| `auth.authenticate` | `authenticate` | Extract token, call provider, set user in ctx |
+| `auth.authorize` | `authorize` | Check role against requirement |
+
+### How it works
+
+1. `register_handlers()` registers auth Intents as pipeline processors
+2. `authenticate` extracts token from request headers/metadata
+3. Calls your registered provider function
+4. Writes `user`, `role`, `auth_method` to `ctx.state`
+5. `authorize` checks `ctx.state["role"]` against required roles
+
+---
 
 ## Token Sources
 
@@ -84,6 +106,8 @@ before("DELETE:/users", "authenticate", required_role="admin")
 before("GET:/reports", "authenticate", required_roles=["viewer", "editor", "admin"])
 ```
 
+---
+
 ## Configuration
 
 ### TOML
@@ -91,9 +115,6 @@ before("GET:/reports", "authenticate", required_roles=["viewer", "editor", "admi
 ```toml
 [engines]
 auth = "auth"
-
-[engines.auth]
-provider = "my_auth"
 ```
 
 ### Python
@@ -109,16 +130,21 @@ register_provider("api_key", api_key_auth_fn)
 before("GET:/users", "authenticate", provider="jwt")
 ```
 
+---
+
 ## API
 
-### Functions
+### `register_handlers()`
+
+Register auth as Intent handlers. No parameters needed.
+
+### Provider Registration
 
 | Function | Signature | Description |
 |----------|-----------|-------------|
 | `register_provider` | `register_provider(name, fn)` | Register an auth provider |
 | `resolve_provider` | `resolve_provider(name)` | Get provider by name |
 | `list_providers` | `list_providers()` | List all registered names |
-| `clear_providers` | `clear_providers()` | Reset registry (testing) |
 
 ### Processors
 
@@ -134,6 +160,12 @@ async def my_provider(token: str) -> dict:
     """Must return dict with at least 'role' key."""
     return {"user": "alice", "role": "admin"}
 ```
+
+---
+
+## Dependencies
+
+- `evoid>=0.4.0`
 
 ## Optional Dependencies
 

@@ -7,14 +7,14 @@
 <h1 align="center">evoid-sqlite</h1>
 
 <p align="center">
-  <strong>SQLite storage engine for EVOID</strong>
+  <strong>SQLite storage engine for EVOID — Intent Handler system</strong>
 </p>
 
 <p align="center">
   <a href="#quick-start">Quick Start</a> •
-  <a href="#api">API</a> •
-  <a href="#installation">Install</a> •
-  <a href="https://evolvebeyond.github.io/EVOID/">Docs</a>
+  <a href="#intent-handler">Intent Handler</a> •
+  <a href="#configuration">Config</a> •
+  <a href="#api">API</a>
 </p>
 
 ---
@@ -25,25 +25,52 @@
 pip install evoid-sqlite
 ```
 
+### Method 1: Intent Handler (Recommended)
+
+```python
+from evoid_sqlite import register_handlers
+from evoid.core.storage import storage_read, storage_write, storage_delete
+
+# Register SQLite as storage handler
+register_handlers(db_path="my_app.db")
+
+# Use high-level API — goes through Intent pipeline
+await storage_write("user:1", {"name": "Alice", "role": "admin"})
+user = await storage_read("user:1")
+await storage_delete("user:1")
+```
+
+### Method 2: Direct API
+
 ```python
 from evoid_sqlite import create_storage
 
-# Create storage
 storage = create_storage("my_app.db")
-
-# Write data
-await storage.write("user:1", {"name": "Alice", "role": "admin"})
-
-# Read data
+await storage.write("user:1", {"name": "Alice"})
 user = await storage.read("user:1")
-print(user)  # {"name": "Alice", "role": "admin"}
-
-# Delete
-await storage.delete("user:1")
-
-# Health check
-ok = await storage.health()
 ```
+
+---
+
+## Intent Handler
+
+evoid-sqlite registers these Intent handlers:
+
+| Intent | Handler | Description |
+|--------|---------|-------------|
+| `storage.read` | `handle_read` | Read from SQLite |
+| `storage.write` | `handle_write` | Write to SQLite |
+| `storage.delete` | `handle_delete` | Delete from SQLite |
+| `storage.health` | `handle_health` | Check connection |
+
+### How it works
+
+1. `register_handlers()` registers Intent handlers for storage operations
+2. `storage_read()` / `storage_write()` create Intents and execute through pipeline
+3. Pipeline routes to SQLite handler
+4. Handler connects to SQLite and performs operation
+
+---
 
 ## Configuration
 
@@ -53,43 +80,57 @@ ok = await storage.health()
 [engines]
 storage = "sqlite"
 
-[engines.sqlite]
-path = "data/my_app.db"
+[engines.options.sqlite]
+db_path = "data/my_app.db"
 ```
 
 ### Python
 
 ```python
-from evoid_sqlite import create_storage
+from evoid.config import config
 
-storage = create_storage("data/my_app.db")
+app = config(
+    engines={
+        "storage": "sqlite",
+        "options": {
+            "sqlite": {"db_path": "data/production.db"},
+        },
+    },
+)
 ```
+
+---
 
 ## API
 
-### `create_storage(path: str) -> SqliteStorage`
+### `register_handlers(db_path: str)`
 
-Factory function. Creates and returns a SQLite storage engine.
+Register SQLite as Intent handlers.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `path` | `str` | — | Path to SQLite database file |
+| `db_path` | `str` | `evoid.db` | Path to SQLite database file |
+
+### `create_storage(db_path: str) -> SQLiteStorage`
+
+Factory function for direct API access.
 
 ### Methods
 
 | Method | Signature | Returns | Description |
 |--------|-----------|---------|-------------|
 | `read` | `async read(key: str)` | `Any \| None` | Read value by key |
-| `write` | `async write(key: str, value: Any)` | `bool` | Write value (JSON serialized) |
+| `write` | `async write(key: str, data: dict)` | `bool` | Write value (JSON serialized) |
 | `delete` | `async delete(key: str)` | `bool` | Delete by key |
 | `health` | `async health()` | `bool` | Check connection |
+| `list_keys` | `async list_keys(namespace: str)` | `list[str]` | List all keys |
 
-## How it works
+---
 
-- Values are stored as JSON in a `kv_store` table
-- Schema: `(key TEXT PRIMARY KEY, value TEXT, created_at TIMESTAMP)`
-- Async via `aiosqlite`
-- Auto-creates table on first use
+## Dependencies
+
+- `evoid>=0.4.0`
+- `aiosqlite>=0.20.0`
 
 ## Links
 

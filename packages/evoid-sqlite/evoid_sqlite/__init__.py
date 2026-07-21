@@ -109,7 +109,7 @@ def create_storage(db_path: str = "evoid.db") -> SQLiteStorage:
 
 
 def register_plugin():
-    """Called when the plugin is loaded."""
+    """Called when the plugin is loaded (legacy path)."""
     register(
         name="sqlite",
         type="engine",
@@ -117,3 +117,40 @@ def register_plugin():
         version="0.1.0",
         description="SQLite storage engine for EVOID",
     )
+
+
+def register_handlers(db_path: str = "evoid.db") -> None:
+    """Register SQLite storage as Intent handlers.
+
+    IOP: Each storage operation is an Intent.
+    This function wires SQLite to handle storage Intents.
+    """
+    from evoid.core import register as register_intent, register_processor
+    from evoid.core.intents import STORAGE_READ, STORAGE_WRITE, STORAGE_DELETE, STORAGE_HEALTH
+
+    _storage = SQLiteStorage(db_path=db_path)
+
+    async def handle_read(ctx):
+        key = ctx.intent.metadata.get("key")
+        return await _storage.read(key)
+
+    async def handle_write(ctx):
+        key = ctx.intent.metadata.get("key")
+        value = ctx.intent.metadata.get("value")
+        return await _storage.write(key, value)
+
+    async def handle_delete(ctx):
+        key = ctx.intent.metadata.get("key")
+        return await _storage.delete(key)
+
+    async def handle_health(ctx):
+        return await _storage.health()
+
+    register_intent(STORAGE_READ)
+    register_intent(STORAGE_WRITE)
+    register_intent(STORAGE_DELETE)
+    register_intent(STORAGE_HEALTH)
+    register_processor("storage.read", handle_read)
+    register_processor("storage.write", handle_write)
+    register_processor("storage.delete", handle_delete)
+    register_processor("storage.health", handle_health)

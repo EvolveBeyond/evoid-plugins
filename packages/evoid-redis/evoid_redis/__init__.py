@@ -86,7 +86,7 @@ def create_cache(url: str = "redis://localhost:6379", prefix: str = "evoid:") ->
 
 
 def register_plugin():
-    """Called when the plugin is loaded."""
+    """Called when the plugin is loaded (legacy path)."""
     register(
         name="redis",
         type="engine",
@@ -94,3 +94,47 @@ def register_plugin():
         version="0.1.0",
         description="Redis cache engine for EVOID",
     )
+
+
+def register_handlers(url: str = "redis://localhost:6379", prefix: str = "evoid:") -> None:
+    """Register Redis cache as Intent handlers.
+
+    IOP: Each cache operation is an Intent.
+    This function wires Redis to handle cache Intents.
+    """
+    from evoid.core import register as register_intent, register_processor
+    from evoid.core.intents import CACHE_GET, CACHE_SET, CACHE_DELETE, CACHE_EXISTS, CACHE_HEALTH
+
+    _cache = RedisCache(url=url, prefix=prefix)
+
+    async def handle_get(ctx):
+        key = ctx.intent.metadata.get("key")
+        return await _cache.get(key)
+
+    async def handle_set(ctx):
+        key = ctx.intent.metadata.get("key")
+        value = ctx.intent.metadata.get("value")
+        ttl = ctx.intent.metadata.get("ttl")
+        return await _cache.set(key, value, ttl)
+
+    async def handle_delete(ctx):
+        key = ctx.intent.metadata.get("key")
+        return await _cache.delete(key)
+
+    async def handle_exists(ctx):
+        key = ctx.intent.metadata.get("key")
+        return await _cache.exists(key)
+
+    async def handle_health(ctx):
+        return await _cache.health()
+
+    register_intent(CACHE_GET)
+    register_intent(CACHE_SET)
+    register_intent(CACHE_DELETE)
+    register_intent(CACHE_EXISTS)
+    register_intent(CACHE_HEALTH)
+    register_processor("cache.get", handle_get)
+    register_processor("cache.set", handle_set)
+    register_processor("cache.delete", handle_delete)
+    register_processor("cache.exists", handle_exists)
+    register_processor("cache.health", handle_health)

@@ -69,3 +69,28 @@ def _load_implementations(impl_config: dict) -> dict:
         implementations[name] = getattr(mod, func_name)
 
     return implementations
+
+
+def register_handlers(
+    rules: dict | None = None,
+    implementations: dict | None = None,
+    services: dict | None = None,
+) -> None:
+    """Register DI engine as Intent handlers.
+
+    IOP: Dependency injection is configured via Intent metadata.
+    """
+    from evoid.core import register as register_intent, register_processor
+
+    _rules = rules or {}
+    _impls = _load_implementations(implementations or {})
+    _services = services or {}
+
+    _engine = DIEngine(_rules, _impls, _services)
+
+    async def handle_resolve(ctx):
+        name = ctx.intent.metadata.get("name")
+        return _engine.resolve(name)
+
+    # DI doesn't have standard Intent categories
+    # but we register it as an engine for consistency

@@ -32,7 +32,7 @@ MANIFEST = {
 
 
 def register_plugin():
-    """Called by EVOID to register this plugin."""
+    """Called by EVOID to register this plugin (legacy path)."""
     from evoid.engines.plugin import register
 
     register(
@@ -42,3 +42,12 @@ def register_plugin():
         version="1.0.0",
         description="Godot game integration adapter",
     )
+
+
+def register_handlers() -> None:
+    """Register Godot adapter as Intent handlers.
+
+    IOP: Godot game operations are Intents.
+    """
+    # Godot is an adapter, not a storage/cache engine
+    # It manages WebSocket connections to Godot games

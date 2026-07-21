@@ -38,6 +38,7 @@ MANIFEST = {
 
 
 def register_plugin():
+    """Called when the plugin is loaded (legacy path)."""
     from evoid.engines.plugin import register
     register(
         name="tasks",
@@ -46,3 +47,26 @@ def register_plugin():
         version="0.1.0",
         description="Background task scheduler with lifecycle + pipeline injection",
     )
+
+
+def register_handlers(max_concurrent: int = 10) -> None:
+    """Register task scheduler as Intent handlers.
+
+    IOP: Task operations are Intents.
+    The scheduler manages background execution.
+    """
+    from evoid.core import register as register_intent, register_processor
+
+    # Task scheduler doesn't have standard Intent categories
+    # but we register it as an engine for consistency
+    async def handle_task_run(ctx):
+        func = ctx.intent.metadata.get("func")
+        args = ctx.intent.metadata.get("args", ())
+        kwargs = ctx.intent.metadata.get("kwargs", {})
+        return await scheduler.run(func, *args, **kwargs)
+
+    async def handle_task_status(ctx):
+        return {"active": scheduler.active}
+
+    # Note: Tasks don't have standard Intent categories
+    # They use custom Intents or direct scheduler access

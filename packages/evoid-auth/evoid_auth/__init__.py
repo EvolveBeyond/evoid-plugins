@@ -48,7 +48,7 @@ MANIFEST = {
 
 
 def register_plugin():
-    """Called when the plugin is loaded."""
+    """Called when the plugin is loaded (legacy path)."""
     from evoid.engines.plugin import register
     from evoid import register_processor
 
@@ -62,3 +62,18 @@ def register_plugin():
         version="0.1.0",
         description="Auth engine with pluggable providers",
     )
+
+
+def register_handlers() -> None:
+    """Register auth as Intent handlers.
+
+    IOP: Auth operations are Intents.
+    authenticate and authorize are registered as pipeline processors.
+    """
+    from evoid.core import register as register_intent, register_processor
+    from evoid.core.intents import AUTH_AUTHENTICATE, AUTH_AUTHORIZE
+
+    register_intent(AUTH_AUTHENTICATE)
+    register_intent(AUTH_AUTHORIZE)
+    register_processor("auth.authenticate", authenticate)
+    register_processor("auth.authorize", authorize)

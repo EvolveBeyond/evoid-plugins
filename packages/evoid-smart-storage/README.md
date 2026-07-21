@@ -7,15 +7,14 @@
 <h1 align="center">evoid-smart-storage</h1>
 
 <p align="center">
-  <strong>Multi-DB routing, schema enforcement, and multi-tenancy for EVOID</strong>
+  <strong>Multi-DB routing — Intent Handler system</strong>
 </p>
 
 <p align="center">
   <a href="#quick-start">Quick Start</a> •
+  <a href="#intent-handler">Intent Handler</a> •
   <a href="#routing">Routing</a> •
-  <a href="#api">API</a> •
-  <a href="#installation">Install</a> •
-  <a href="https://evolvebeyond.github.io/EVOID/">Docs</a>
+  <a href="#api">API</a>
 </p>
 
 ---
@@ -26,30 +25,60 @@
 pip install evoid-smart-storage
 ```
 
-Smart Storage routes data to different backends based on type, level, or user. It doesn't store data itself — it delegates to your installed storage plugins.
+### Method 1: Intent Handler (Recommended)
 
 ```python
-from evoid_smart_storage import SmartStorage
+from evoid_smart_storage import register_handlers
+from evoid.core.storage import storage_read, storage_write
 
-# Configure routing
-storage = SmartStorage(config={
+# Register Smart Storage as storage handler
+register_handlers(config={
     "mapping": {
         "credentials": "postgresql",
         "session": "redis",
         "logs": "memory",
     },
-    "level_routing": {
-        "CRITICAL": "postgresql",
-        "STANDARD": "sqlite",
-    },
 })
 
-# Write — routes to postgresql (because data_type="credentials")
-await storage.write("credentials", {"email": "alice@example.com"})
-
-# Write — routes to redis (because data_type="session")
-await storage.write("session", {"token": "abc123"})
+# Routes automatically based on data type
+await storage_write("cred:db_pass", {"password": "secret"})
+await storage_write("session:abc", {"user": "alice"})
 ```
+
+### Method 2: Direct API
+
+```python
+from evoid_smart_storage import SmartStorage
+
+storage = SmartStorage(config={...})
+await storage.write("key", {"data": "value"})
+```
+
+---
+
+## Intent Handler
+
+evoid-smart-storage registers these Intent handlers:
+
+| Intent | Handler | Description |
+|--------|---------|-------------|
+| `storage.read` | `handle_read` | Read with smart routing |
+| `storage.write` | `handle_write` | Write with smart routing |
+| `storage.delete` | `handle_delete` | Delete with smart routing |
+| `storage.health` | `handle_health` | Check all backends |
+
+---
+
+## Routing
+
+Smart Storage routes data based on:
+
+1. **Data type** — credentials → PostgreSQL, sessions → Redis
+2. **Intent level** — CRITICAL → PostgreSQL, STANDARD → SQLite
+3. **User ID** — multi-tenancy support
+4. **Metadata override** — explicit backend selection
+
+---
 
 ## Configuration
 
@@ -59,106 +88,33 @@ await storage.write("session", {"token": "abc123"})
 [engines]
 storage = "smart_storage"
 
-[engines.smart_storage.mapping]
-credentials = "postgresql"
-session = "redis"
-logs = "memory"
-
-[engines.smart_storage.level_routing]
-CRITICAL = "postgresql"
-STANDARD = "sqlite"
-EPHEMERAL = "memory"
-
-[engines.smart_storage.schemas]
-credentials = ["email", "password_hash", "role"]
+[engines.options.smart_storage]
+mapping = { credentials = "postgresql", session = "redis" }
 ```
 
-### Python
-
-```python
-from evoid_smart_storage import SmartStorage
-
-storage = SmartStorage(config={
-    "mapping": {
-        "credentials": "postgresql",
-        "session": "redis",
-    },
-    "schemas": {
-        "credentials": ["email", "password_hash"],
-    },
-    "level_routing": {
-        "CRITICAL": "postgresql",
-    },
-    "user_connections": {
-        "user_123": "scylla",
-    },
-})
-```
-
-## Routing Priority
-
-Smart Storage checks in this order:
-
-1. **Explicit override** — `intent.metadata["storage_preference"]`
-2. **User routing** — `user_connections[user_id]` (multi-tenancy)
-3. **Level routing** — `level_routing[intent.level]` (e.g., CRITICAL → PostgreSQL)
-4. **Type mapping** — `mapping[data_type]` (default fallback)
-
-## Schema Enforcement
-
-Define allowed fields per data type:
-
-```python
-storage = SmartStorage(config={
-    "mapping": {"credentials": "postgresql"},
-    "schemas": {
-        "credentials": ["email", "password_hash"],  # Only these fields allowed
-    },
-})
-
-# Extra fields are stripped automatically
-await storage.write("credentials", {
-    "email": "alice@example.com",
-    "password_hash": "...",
-    "debug_field": "removed",  # This gets stripped
-})
-```
-
-## Multi-Write
-
-Route to multiple backends at once:
-
-```python
-# In metadata, set storage_preference to "memory+redis"
-await storage.write("logs", {"event": "login"}, metadata={
-    "storage_preference": "memory+redis",
-})
-```
+---
 
 ## API
 
-### `SmartStorage(config: dict)`
+### `register_handlers(config: dict)`
 
-| Config Key | Type | Description |
-|------------|------|-------------|
-| `mapping` | `dict[str, str]` | Data type → backend name |
-| `schemas` | `dict[str, list[str]]` | Allowed fields per type |
-| `level_routing` | `dict[str, str]` | Intent level → backend |
-| `user_connections` | `dict[str, str]` | User ID → backend (multi-tenancy) |
+Register Smart Storage as Intent handlers.
 
-### Methods
+### SmartStorage Methods
 
-| Method | Signature | Description |
-|--------|-----------|-------------|
-| `write` | `async write(data_type, data, intent=None, user_id=None)` | Route and write |
-| `read` | `async read(data_type, query, intent=None, user_id=None)` | Read from primary backend |
-| `delete` | `async delete(data_type, query, intent=None, user_id=None)` | Delete from all targets |
-| `health` | `async health()` | Check all backends |
+| Method | Signature | Returns | Description |
+|--------|-----------|---------|-------------|
+| `read` | `async read(key: str)` | `Any \| None` | Read with routing |
+| `write` | `async write(key: str, data: dict)` | `bool` | Write with routing |
+| `delete` | `async delete(key: str)` | `bool` | Delete with routing |
+| `health` | `async health()` | `bool` | Check all backends |
+
+---
 
 ## Dependencies
 
 - `evoid>=0.4.0`
-- At least one storage plugin (e.g., `evoid-sqlite`, `evoid-redis`, `evoid-postgresql`)
+- At least one storage plugin (sqlite, postgresql, redis, etc.)
 
 ## Links
 

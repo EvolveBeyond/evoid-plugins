@@ -7,15 +7,14 @@
 <h1 align="center">evoid-tasks</h1>
 
 <p align="center">
-  <strong>Background tasks with Godot-inspired lifecycle for EVOID</strong>
+  <strong>Background tasks with lifecycle — Intent Handler system</strong>
 </p>
 
 <p align="center">
   <a href="#quick-start">Quick Start</a> •
+  <a href="#intent-handler">Intent Handler</a> •
   <a href="#lifecycle">Lifecycle</a> •
-  <a href="#api">API</a> •
-  <a href="#installation">Install</a> •
-  <a href="https://evolvebeyond.github.io/EVOID/">Docs</a>
+  <a href="#api">API</a>
 </p>
 
 ---
@@ -26,143 +25,92 @@
 pip install evoid-tasks
 ```
 
-### Fire and Forget
+### Method 1: Intent Handler (Recommended)
+
+```python
+from evoid_tasks import register_handlers
+
+# Register task scheduler as Intent handlers
+register_handlers(max_concurrent=10)
+```
+
+### Method 2: Direct API
 
 ```python
 from evoid_tasks import scheduler
 
-# Run in background
+# Fire and forget
 scheduler.run(send_email, to="alice@example.com")
+
+# Periodic tasks
+@scheduler.task(interval=60)
+async def cleanup(ctx):
+    await delete_old_sessions()
 ```
 
-### Periodic Tasks
+---
+
+## Intent Handler
+
+evoid-tasks registers task scheduling as Intent handlers.
+
+---
+
+## Lifecycle (Godot-inspired)
 
 ```python
 from evoid_tasks import scheduler, TaskContext
 
-@scheduler.task(interval=60)
-async def monitor(ctx: TaskContext):
-    if ctx.tick:
-        await check_service_health()
+@scheduler.task(interval=10)
+async def my_task(ctx: TaskContext):
+    # on_start — called once
+    print(f"Task {ctx.task_name} started")
+
+    # on_tick — called every interval
+    print(f"Tick {ctx.tick}, delta={ctx.delta}")
+
+    # on_stop — called on cancellation
+    # on_error — called on exception
 ```
 
-### Event-Driven
-
-```python
-from evoid_tasks import scheduler
-
-@scheduler.on("order_placed")
-async def update_stats(ctx):
-    await recalc_inventory(ctx.event_data)
-```
-
-## Lifecycle
-
-Interval-based tasks follow a Godot-inspired lifecycle:
-
-```
-on_start → on_tick (repeats) → on_stop
-                ↓
-            on_error (on failure)
-```
-
-| Hook | When | Use Case |
-|------|------|----------|
-| `on_start` | Task begins | Initialize resources |
-| `on_tick` | Every `interval` seconds | Main work |
-| `on_stop` | Task cancelled | Cleanup |
-| `on_error` | Tick fails | Error recovery |
-
-### TaskContext
-
-```python
-@dataclass
-class TaskContext:
-    task_name: str       # "monitor"
-    started: float       # Start timestamp
-    tick: int            # Current tick number
-    stopped: bool        # True if shutting down
-    delta: float         # Seconds since last tick
-    event_data: Any      # Data from emit()
-    state: dict          # Persistent state across ticks
-```
-
-## Pipeline Integration
-
-### As Processor
-
-```python
-from evoid_tasks import scheduler
-
-@scheduler.as_processor("send_welcome_email")
-async def send_welcome(ctx):
-    await send_email(ctx.state["user"]["email"])
-```
-
-### As Intent
-
-```python
-from evoid_tasks import scheduler
-from evoid import Level
-
-@scheduler.as_intent("process_order", level=Level.CRITICAL)
-async def process_order(ctx):
-    await charge_card(ctx.state["order"])
-```
-
-### Inject into Pipeline
-
-```python
-from evoid_tasks import scheduler
-
-@scheduler.inject(task_fn, before="validate", after="authorize")
-async def audit_log(ctx):
-    await log_action(ctx)
-```
+---
 
 ## Configuration
 
-```python
-from evoid_tasks import TaskScheduler
+### TOML
 
-scheduler = TaskScheduler(max_concurrent=20)
+```toml
+[engines]
+tasks = "tasks"
+
+[engines.options.tasks]
+max_concurrent = 10
 ```
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `max_concurrent` | `int` | `10` | Max concurrent periodic tasks |
+---
 
 ## API
 
-### Scheduler
+### `register_handlers(max_concurrent: int = 10)`
+
+Register task scheduler as Intent handlers.
+
+### Scheduler Methods
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
 | `run` | `run(func, *args, **kwargs)` | Fire-and-forget background task |
-| `task` | `@scheduler.task(interval=N)` | Register periodic task |
-| `on` | `@scheduler.on("event_name")` | Register event handler |
-| `emit` | `emit(event, data)` | Fire event to all handlers |
-| `as_processor` | `@scheduler.as_processor(name)` | Wrap as EVOID processor |
-| `as_intent` | `@scheduler.as_intent(name, level)` | Create Intent + processor |
-| `inject` | `inject(fn, before, after)` | Insert into existing pipeline |
-| `cancel` | `cancel(task_def)` | Cancel a periodic task |
+| `task` | `@task(interval=N)` | Decorator for periodic tasks |
+| `on` | `@on(event)` | Listen for named events |
+| `emit` | `emit(event, data)` | Emit event to all handlers |
+| `cancel` | `cancel(task_def)` | Cancel a running task |
 | `shutdown` | `shutdown()` | Cancel all tasks |
 
-### Convenience Re-exports
+---
 
-```python
-from evoid_tasks import run, task, on, emit, as_processor, as_intent, inject
-```
+## Dependencies
 
-## Optional Dependencies
-
-- `loguru>=0.7.0` — for beautiful colored output
-
-Install with:
-
-```bash
-pip install "evoid-tasks[loguru]"
-```
+- `evoid>=0.4.0`
 
 ## Links
 

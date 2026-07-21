@@ -32,7 +32,7 @@ MANIFEST = {
 
 
 def register_plugin():
-    """Called by EVOID to register this plugin."""
+    """Called by EVOID to register this plugin (legacy path)."""
     from evoid.engines.plugin import register
 
     register(
@@ -42,3 +42,12 @@ def register_plugin():
         version="1.0.0",
         description="Priority-aware scheduler with system metrics",
     )
+
+
+def register_handlers(max_workers: int = 4) -> None:
+    """Register scheduler as Intent handlers.
+
+    IOP: Scheduler operations are Intents for task management.
+    """
+    # Scheduler doesn't use standard storage/cache Intents
+    # It manages task execution priority and concurrency

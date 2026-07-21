@@ -135,7 +135,7 @@ def create_storage(
 
 
 def register_plugin():
-    """Called when the plugin is loaded."""
+    """Called when the plugin is loaded (legacy path)."""
     register(
         name="scylla",
         type="engine",
@@ -143,3 +143,39 @@ def register_plugin():
         version="0.1.0",
         description="ScyllaDB/Cassandra storage engine for EVOID",
     )
+
+
+def register_handlers(
+    contact_points: list[str] | None = None,
+    port: int = 9042,
+    keyspace: str = "evoid",
+) -> None:
+    """Register ScyllaDB storage as Intent handlers."""
+    from evoid.core import register as register_intent, register_processor
+    from evoid.core.intents import STORAGE_READ, STORAGE_WRITE, STORAGE_DELETE, STORAGE_HEALTH
+
+    _storage = ScyllaStorage(contact_points=contact_points, port=port, keyspace=keyspace)
+
+    async def handle_read(ctx):
+        return await _storage.read(ctx.intent.metadata.get("key"))
+
+    async def handle_write(ctx):
+        return await _storage.write(
+            ctx.intent.metadata.get("key"),
+            ctx.intent.metadata.get("value"),
+        )
+
+    async def handle_delete(ctx):
+        return await _storage.delete(ctx.intent.metadata.get("key"))
+
+    async def handle_health(ctx):
+        return await _storage.health()
+
+    register_intent(STORAGE_READ)
+    register_intent(STORAGE_WRITE)
+    register_intent(STORAGE_DELETE)
+    register_intent(STORAGE_HEALTH)
+    register_processor("storage.read", handle_read)
+    register_processor("storage.write", handle_write)
+    register_processor("storage.delete", handle_delete)
+    register_processor("storage.health", handle_health)

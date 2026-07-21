@@ -7,15 +7,14 @@
 <h1 align="center">evoid-di</h1>
 
 <p align="center">
-  <strong>Dependency injection engine for EVOID — simple, scoped, or context-aware</strong>
+  <strong>Dependency injection engine — Intent Handler system</strong>
 </p>
 
 <p align="center">
   <a href="#quick-start">Quick Start</a> •
+  <a href="#intent-handler">Intent Handler</a> •
   <a href="#three-levels">Three Levels</a> •
-  <a href="#api">API</a> •
-  <a href="#installation">Install</a> •
-  <a href="https://evolvebeyond.github.io/EVOID/">Docs</a>
+  <a href="#api">API</a>
 </p>
 
 ---
@@ -26,23 +25,37 @@
 pip install evoid-di
 ```
 
+### Method 1: Intent Handler (Recommended)
+
+```python
+from evoid_di import register_handlers
+
+# Register DI engine as Intent handlers
+register_handlers(
+    rules={"notifier": {"default": "memory"}},
+    implementations={"memory": lambda: MemoryNotifier()},
+)
+```
+
+### Method 2: Direct API
+
 ```python
 from evoid_di import DIEngine
 
 di = DIEngine()
-
-# Register factories
 di.register("db", lambda: create_db("app.db"))
-di.register("cache", lambda: create_cache("redis://localhost"))
-
-# Resolve
 db = di.resolve("db")
-cache = di.resolve("cache")
 ```
 
-## Three Levels
+---
 
-### Level 1: Simple
+## Intent Handler
+
+evoid-di registers dependency resolution as Intent handlers.
+
+### Three Levels
+
+#### Level 1: Simple
 
 Name-based resolution. One factory, one instance.
 
@@ -54,7 +67,7 @@ di.register("db", lambda: create_db("app.db"))
 db = di.resolve("db")
 ```
 
-### Level 2: Scoped
+#### Level 2: Scoped
 
 Control instance lifetime per dependency.
 
@@ -74,7 +87,7 @@ db = di.resolve("db")
 session = di.resolve("session", user_id="user_123")
 ```
 
-### Level 3: Context-Aware
+#### Level 3: Context-Aware
 
 Route implementations based on Intent level, metadata, or user.
 
@@ -87,14 +100,8 @@ di = DIEngine(
             "scope": "singleton",
             "default": "memory_notifier",
             "rules": [
-                {
-                    "when": {"level": "CRITICAL"},
-                    "then": "email_sender",
-                },
-                {
-                    "when": {"level": "STANDARD"},
-                    "then": "slack_sender",
-                },
+                {"when": {"level": "CRITICAL"}, "then": "email_sender"},
+                {"when": {"level": "STANDARD"}, "then": "slack_sender"},
             ],
         }
     },
@@ -105,9 +112,10 @@ di = DIEngine(
     },
 )
 
-# Resolves based on context
 notifier = await di.resolve_async("notifier", ctx)
 ```
+
+---
 
 ## Configuration
 
@@ -117,27 +125,27 @@ notifier = await di.resolve_async("notifier", ctx)
 [engines]
 di = "di"
 
-[engines.di.notifier]
-scope = "singleton"
-default = "memory"
-
-[engines.di.notifier.critical]
-when = { level = "CRITICAL" }
-then = "email_sender"
+[engines.options.di]
+rules = {"notifier": {"default": "memory"}}
+implementations = {"memory": "my_module:create_notifier"}
 ```
+
+---
 
 ## API
 
-### `DIEngine`
+### `register_handlers(rules, implementations, services)`
 
-| Method | Tier | Signature | Description |
-|--------|------|-----------|-------------|
-| `register` | L1/L2 | `register(name, factory, scope="transient")` | Register a factory |
-| `resolve` | L1/L2 | `resolve(name, user_id=None)` | Synchronous resolve |
-| `resolve_async` | L3 | `async resolve_async(name, ctx, extra=None)` | Async resolve with context |
-| `inject` | All | `inject(ctx, service_name, key=None)` | Resolve and inject into `ctx.deps` |
-| `clear` | All | `clear()` | Purge all cached instances |
-| `list_services` | All | `list_services()` | List registered service names |
+Register DI engine as Intent handlers.
+
+### DIEngine Methods
+
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `register` | `register(name, factory, scope="transient")` | Register a factory |
+| `resolve` | `resolve(name, user_id=None)` | Synchronous resolve |
+| `resolve_async` | `async resolve_async(name, ctx)` | Async resolve with context |
+| `inject` | `inject(ctx, service_name, key=None)` | Resolve and inject into `ctx.deps` |
 
 ### Scopes
 
@@ -147,9 +155,11 @@ then = "email_sender"
 | `transient` | New instance on every resolve |
 | `per_user` | One instance per `user_id` |
 
+---
+
 ## Dependencies
 
-- `evoid>=0.4.0` (no extra dependencies)
+- `evoid>=0.4.0`
 
 ## Links
 

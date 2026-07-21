@@ -43,7 +43,7 @@ MANIFEST = {
 
 
 def register_plugin():
-    """Register evoid-cluster with the evoid plugin registry."""
+    """Register evoid-cluster with the evoid plugin registry (legacy path)."""
     try:
         from evoid.engines.plugin import register
         register(
@@ -55,3 +55,12 @@ def register_plugin():
         )
     except ImportError:
         pass
+
+
+def register_handlers(config: dict | None = None) -> None:
+    """Register cluster as Intent handlers.
+
+    IOP: Cluster operations are Intents routed across nodes.
+    """
+    # Cluster doesn't use standard storage/cache Intents
+    # It manages inter-node communication via message bus

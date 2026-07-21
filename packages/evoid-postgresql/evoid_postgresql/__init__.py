@@ -113,7 +113,7 @@ def create_storage(url: str = "postgresql+asyncpg://localhost/evoid") -> Postgre
 
 
 def register_plugin():
-    """Called when the plugin is loaded."""
+    """Called when the plugin is loaded (legacy path)."""
     register(
         name="postgresql",
         type="engine",
@@ -121,3 +121,35 @@ def register_plugin():
         version="0.1.0",
         description="PostgreSQL storage engine via SQLAlchemy",
     )
+
+
+def register_handlers(url: str = "postgresql+asyncpg://localhost/evoid") -> None:
+    """Register PostgreSQL storage as Intent handlers."""
+    from evoid.core import register as register_intent, register_processor
+    from evoid.core.intents import STORAGE_READ, STORAGE_WRITE, STORAGE_DELETE, STORAGE_HEALTH
+
+    _storage = PostgresStorage(url=url)
+
+    async def handle_read(ctx):
+        return await _storage.read(ctx.intent.metadata.get("key"))
+
+    async def handle_write(ctx):
+        return await _storage.write(
+            ctx.intent.metadata.get("key"),
+            ctx.intent.metadata.get("value"),
+        )
+
+    async def handle_delete(ctx):
+        return await _storage.delete(ctx.intent.metadata.get("key"))
+
+    async def handle_health(ctx):
+        return await _storage.health()
+
+    register_intent(STORAGE_READ)
+    register_intent(STORAGE_WRITE)
+    register_intent(STORAGE_DELETE)
+    register_intent(STORAGE_HEALTH)
+    register_processor("storage.read", handle_read)
+    register_processor("storage.write", handle_write)
+    register_processor("storage.delete", handle_delete)
+    register_processor("storage.health", handle_health)

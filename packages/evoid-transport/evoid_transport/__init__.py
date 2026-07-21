@@ -487,7 +487,7 @@ MANIFEST = {
 
 
 def register_plugin():
-    """Register evoid-transport with the evoid plugin registry."""
+    """Register evoid-transport with the evoid plugin registry (legacy path)."""
     try:
         from evoid.engines.plugin import register
         register(
@@ -499,3 +499,12 @@ def register_plugin():
         )
     except ImportError:
         pass
+
+
+def register_handlers(host: str = "0.0.0.0", port: int = 9000) -> None:
+    """Register UDP transport as Intent handlers.
+
+    IOP: Transport operations are Intents for network communication.
+    """
+    # Transport doesn't use standard storage/cache Intents
+    # It manages UDP packet sending/receiving
