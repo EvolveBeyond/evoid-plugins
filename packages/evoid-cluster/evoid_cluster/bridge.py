@@ -6,6 +6,7 @@ Hooks into the local message bus and bridges intents to remote nodes.
 from __future__ import annotations
 
 import asyncio
+import logging
 import time
 from dataclasses import dataclass, field
 from typing import Any
@@ -13,6 +14,8 @@ from typing import Any
 import websockets
 
 from .node import ClusterNode, NodeStatus
+
+logger = logging.getLogger("evoid.cluster")
 from .registry import ServiceRegistry
 from .router import IntentRouter
 from .health import HealthChecker
@@ -138,18 +141,37 @@ class ClusterBridge:
         self._nodes_ws.clear()
 
     def _hook_bus(self) -> None:
-        """Hook into local message bus to intercept outgoing intents."""
+        """Hook into local message bus for internal communication."""
         from evoid import subscribe
         for svc in self.config.services:
             subscribe(svc, self._make_local_handler(svc))
+        # Also subscribe to cluster:* for management intents
+        subscribe("cluster:*", self._handle_cluster_intent)
 
     def _make_local_handler(self, pattern: str):
         async def handler(intent):
-            node = self._registry.resolve(intent.name)
-            if node and node.node_id != self.local_node_id:
-                return await self._router.route(intent)
-            return None
+            # Try local first
+            if self._registry.is_local(intent.name, self.local_node_id):
+                return None  # Let normal processing handle it
+
+            # Try remote with failover
+            try:
+                return await self._router.route_with_failover(intent)
+            except Exception as e:
+                logger.error(f"Intent '{intent.name}' failed on all nodes: {e}")
+                return None
         return handler
+
+    async def _handle_cluster_intent(self, intent):
+        """Handle cluster management intents via message bus."""
+        name = intent.name
+        if name == "cluster:list_nodes":
+            return self.get_all_nodes()
+        elif name == "cluster:list_services":
+            return self.get_all_services()
+        elif name == "cluster:health":
+            return self.health()
+        return None
 
     async def _start_server(self) -> None:
         ssl_ctx = self._tls.create_ssl_context(server_side=True) if self._tls.has_certs else None
@@ -225,10 +247,10 @@ class ClusterBridge:
                 status=NodeStatus.ONLINE,
             )
             self._registry.register_node(node)
-            # Listen for messages in background
             asyncio.create_task(self._listen_peer(peer_id, ws))
+            logger.info(f"Connected to peer '{peer_id}' at {host}:{port}")
         except Exception as e:
-            print(f"[cluster] Failed to connect to {peer_id}: {e}")
+            logger.warning(f"Failed to connect to '{peer_id}': {e}")
 
     async def _listen_peer(self, peer_id: str, ws) -> None:
         try:
@@ -239,10 +261,10 @@ class ClusterBridge:
                 else:
                     await self._router.handle_incoming(msg)
         except websockets.ConnectionClosed:
+            logger.info(f"Peer '{peer_id}' disconnected")
+        finally:
             self._nodes_ws.pop(peer_id, None)
-            node = self._registry.get_node(peer_id)
-            if node:
-                node.status = NodeStatus.OFFLINE
+            self._registry.mark_node_offline(peer_id)
 
     async def _announce_services(self) -> None:
         msg = make_message(
@@ -274,7 +296,7 @@ class ClusterBridge:
     def get_all_nodes(self) -> list[ClusterNode]:
         return self._registry.get_all_nodes()
 
-    def get_all_services(self) -> dict[str, str]:
+    def get_all_services(self) -> dict[str, list[str]]:
         return self._registry.get_all_services()
 
     def health(self) -> dict:

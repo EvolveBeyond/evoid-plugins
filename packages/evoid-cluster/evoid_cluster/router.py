@@ -1,8 +1,9 @@
-"""IntentRouter — routes intents between cluster nodes."""
+"""IntentRouter — routes intents between cluster nodes with load balancing."""
 
 from __future__ import annotations
 
 import asyncio
+import logging
 import time
 from typing import Any
 
@@ -12,27 +13,35 @@ from .protocol import (
 )
 from .registry import ServiceRegistry
 
+logger = logging.getLogger("evoid.cluster.router")
+
 
 class IntentRouter:
     """Routes intents between local and remote nodes.
 
-    For remote intents: serialize → WebSocket → remote node → result → WebSocket back.
-    For local intents: execute via normal message bus.
+    Features:
+    - Load balancing across healthy nodes
+    - Automatic failover on timeout
+    - Message bus for internal communication
     """
 
     def __init__(self, registry: ServiceRegistry, local_node_id: str, send_fn):
         self._registry = registry
         self._local_node_id = local_node_id
-        self._send = send_fn  # async fn(target_node_id, msg) -> None
+        self._send = send_fn
         self._pending: dict[str, asyncio.Future] = {}
-        self._local_execute = None  # set by bridge
+        self._local_execute = None
 
     def set_local_executor(self, fn) -> None:
         self._local_execute = fn
 
-    async def route(self, intent: Any, timeout: float | None = None) -> Any:
-        """Route an intent — local or remote."""
-        node = self._registry.resolve(intent.name)
+    async def route(self, intent: Any, timeout: float | None = None, load_balance: bool = True) -> Any:
+        """Route an intent — local or remote with load balancing."""
+        if load_balance:
+            node = self._registry.resolve_load_balanced(intent.name)
+        else:
+            node = self._registry.resolve(intent.name)
+
         if node is None:
             raise ValueError(f"No node handles service: {intent.name}")
 
@@ -41,8 +50,34 @@ class IntentRouter:
 
         return await self._forward_remote(intent, node, timeout or getattr(intent, "timeout", 10.0))
 
+    async def route_with_failover(self, intent: Any, timeout: float | None = None) -> Any:
+        """Route with automatic failover — try all healthy nodes."""
+        nodes = self._registry.resolve_all(intent.name)
+        if not nodes:
+            raise ValueError(f"No node handles service: {intent.name}")
+
+        last_error = None
+        for node in nodes:
+            if node.node_id == self._local_node_id:
+                try:
+                    return await self._execute_local(intent)
+                except Exception as e:
+                    last_error = e
+                    logger.warning(f"Local execution failed: {e}")
+                    continue
+
+            try:
+                return await self._forward_remote(intent, node, timeout or 5.0)
+            except Exception as e:
+                last_error = e
+                logger.warning(f"Node '{node.node_id}' failed: {e}")
+                self._registry.mark_node_offline(node.node_id)
+                continue
+
+        raise RuntimeError(f"All nodes failed for '{intent.name}': {last_error}")
+
     async def _execute_local(self, intent: Any) -> Any:
-        """Execute intent locally via evoid runtime."""
+        """Execute intent locally via message bus."""
         if self._local_execute:
             return await self._local_execute(intent)
         from evoid import execute
