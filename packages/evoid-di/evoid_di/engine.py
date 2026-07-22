@@ -49,7 +49,7 @@ class DIEngine:
     __slots__ = (
         "_factories", "_scopes", "_singletons", "_per_user", "_max_per_user",
         "_impl_registry", "_services_config", "_rule_sets",
-        "_fallbacks", "_health_checks", "_unhealthy",
+        "_fallbacks", "_health_checks", "_unhealthy", "_cluster_registry",
     )
 
     def __init__(
@@ -79,6 +79,7 @@ class DIEngine:
         self._fallbacks: dict[str, list[str]] = {}  # service → fallback chain
         self._health_checks: dict[str, Callable] = {}  # service → health check fn
         self._unhealthy: set[str] = set()  # currently unhealthy services
+        self._cluster_registry: Any = None  # cluster ServiceRegistry
 
     # ============================================================
     # Level 1: Simple register/resolve
@@ -300,10 +301,13 @@ class DIEngine:
     def resolve_with_fallback(self, name: str, user_id: str | None = None) -> Any | None:
         """Resolve with automatic fallback chain.
 
-        Tries the primary service first, then fallbacks in order.
-        Returns None if all fail (never raises).
+        Resolution order:
+        1. Local primary service
+        2. Local fallback services
+        3. Remote cluster peers
+        4. Returns None if all fail (never raises)
         """
-        # Try primary
+        # 1. Try primary
         if self.has(name) and self.is_healthy(name):
             try:
                 return self.resolve(name, user_id=user_id)
@@ -311,7 +315,7 @@ class DIEngine:
                 logger.error(f"Failed to resolve '{name}': {e}")
                 self.mark_unhealthy(name)
 
-        # Try fallbacks
+        # 2. Try local fallbacks
         for fallback_name in self._fallbacks.get(name, []):
             if self.has(fallback_name) and self.is_healthy(fallback_name):
                 try:
@@ -320,6 +324,13 @@ class DIEngine:
                 except Exception as e:
                     logger.error(f"Fallback '{fallback_name}' also failed: {e}")
                     self.mark_unhealthy(fallback_name)
+
+        # 3. Try cluster peers
+        if self._cluster_registry:
+            node = self._cluster_registry.resolve(name)
+            if node:
+                logger.info(f"Service '{name}' available on cluster node '{node.node_id}'")
+                return node
 
         logger.warning(f"All services failed for '{name}', returning None")
         return None
@@ -335,3 +346,40 @@ class DIEngine:
             if result is not None:
                 return result
         return None
+
+    # ============================================================
+    # Cluster Integration
+    # ============================================================
+
+    def set_cluster_registry(self, registry: Any) -> None:
+        """Connect to cluster ServiceRegistry for remote resolution.
+
+        Example:
+            from evoid_cluster import ServiceRegistry
+            di.set_cluster_registry(cluster._registry)
+        """
+        self._cluster_registry = registry
+
+    def resolve_remote(self, service_name: str, local_node_id: str) -> Any | None:
+        """Resolve a service via cluster on a remote node.
+
+        Checks if the service is available on another node in the cluster.
+        Returns the remote node info if found.
+        """
+        if not self._cluster_registry:
+            return None
+
+        node = self._cluster_registry.resolve(service_name)
+        if node and node.node_id != local_node_id:
+            logger.info(f"Service '{service_name}' found on remote node '{node.node_id}'")
+            return node
+        return None
+
+    def get_cluster_services(self) -> dict[str, str]:
+        """Get all services available across the cluster.
+
+        Returns dict of service_name → node_id.
+        """
+        if not self._cluster_registry:
+            return {}
+        return self._cluster_registry.get_all_services()

@@ -32,12 +32,12 @@ __all__ = [
 
 MANIFEST = {
     "name": "evoid-cluster",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "type": "engine",
     "description": "Cluster plugin — connect multiple evoid nodes into a unified system",
     "entry_point": "evoid_cluster:register_plugin",
-    "dependencies": ["evoid>=0.4.0", "websockets>=12.0"],
-    "evoid_version": ">=0.4.0",
+    "dependencies": ["evoid>=0.4.3", "websockets>=12.0"],
+    "evoid_version": ">=0.4.3",
     "tags": ["cluster", "distributed", "multi-node", "mesh"],
 }
 
@@ -61,8 +61,14 @@ def register_handlers(config: dict | None = None) -> None:
     """Register cluster as Intent handlers.
 
     IOP: Cluster operations are Intents routed across nodes.
-    Registers with DI as 'cluster' for dependency resolution.
+    Registers with DI as 'cluster' and connects registry for remote resolution.
     """
     from evoid_di import di
 
-    di.register("cluster", lambda: ClusterBridge(config), scope="singleton")
+    def create_cluster():
+        bridge = ClusterBridge(ClusterConfig(**config) if config else ClusterConfig())
+        # Connect cluster registry to DI for remote fallback
+        di.set_cluster_registry(bridge._registry)
+        return bridge
+
+    di.register("cluster", create_cluster, scope="singleton")
