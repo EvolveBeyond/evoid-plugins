@@ -37,9 +37,10 @@ class SQLiteStorage:
         self._conn = await aiosqlite.connect(self.db_path)
         await self._conn.execute("""
             CREATE TABLE IF NOT EXISTS kv_store (
-                key TEXT PRIMARY KEY,
+                key TEXT NOT NULL,
                 value TEXT NOT NULL,
-                namespace TEXT DEFAULT 'default'
+                namespace TEXT NOT NULL DEFAULT 'default',
+                PRIMARY KEY (key, namespace)
             )
         """)
         await self._conn.commit()

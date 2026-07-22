@@ -167,7 +167,7 @@ class DIEngine:
         user_id = context.get("user_id")
 
         if scope == "per_user" and user_id:
-            key = (name, user_id)
+            key = (name, impl_name, user_id)
             if key not in self._per_user:
                 self._evict_per_user_if_needed()
                 self._per_user[key] = self._create_impl(impl_name)
@@ -176,10 +176,13 @@ class DIEngine:
         if scope == "transient":
             return self._create_impl(impl_name)
 
-        # Singleton
-        if name not in self._singletons:
-            self._singletons[name] = self._create_impl(impl_name)
-        return self._singletons[name]
+        # Singleton — cache by service:impl, not just service name
+        # This allows different implementations to each be singletons
+        # while sharing resources within the same implementation
+        cache_key = f"{name}:{impl_name}"
+        if cache_key not in self._singletons:
+            self._singletons[cache_key] = self._create_impl(impl_name)
+        return self._singletons[cache_key]
 
     async def inject(
         self,
@@ -223,8 +226,15 @@ class DIEngine:
         self._per_user.clear()
 
     def clear_user(self, user_id: str) -> None:
-        """Clear cached instances for a specific user."""
-        keys_to_remove = [k for k in self._per_user if k[1] == user_id]
+        """Clear cached instances for a specific user.
+
+        Handles both Level 1 keys: (name, user_id)
+        and Level 3 keys: (name, impl_name, user_id)
+        """
+        keys_to_remove = [
+            k for k in self._per_user
+            if (len(k) == 2 and k[1] == user_id) or (len(k) == 3 and k[2] == user_id)
+        ]
         for key in keys_to_remove:
             del self._per_user[key]
 
