@@ -22,7 +22,7 @@
 ## Quick Start
 
 ```bash
-pip install evoid-tasks
+uv add evoid-tasks
 ```
 
 ### Method 1: Intent Handler (Recommended)
@@ -107,6 +107,18 @@ Register task scheduler as Intent handlers.
 | `shutdown` | `shutdown()` | Cancel all tasks |
 
 ---
+
+## DI Integration
+
+All plugins register with evoid-di for automatic service discovery and fault tolerance.
+
+```python
+from evoid_di import di
+
+# Resolve with fallback
+storage = di.resolve_with_fallback("storage.postgresql")
+# Tries: postgresql → sqlite → redis → cluster peers → None
+```
 
 ## Dependencies
 

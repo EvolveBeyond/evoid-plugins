@@ -22,7 +22,7 @@
 ## Quick Start
 
 ```bash
-pip install evoid-di
+uv add evoid-di
 ```
 
 ### Method 1: Intent Handler (Recommended)
@@ -142,10 +142,18 @@ Register DI engine as Intent handlers.
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `register` | `register(name, factory, scope="transient")` | Register a factory |
+| `register` | `register(name, factory, scope="singleton")` | Register a factory |
 | `resolve` | `resolve(name, user_id=None)` | Synchronous resolve |
 | `resolve_async` | `async resolve_async(name, ctx)` | Async resolve with context |
 | `inject` | `inject(ctx, service_name, key=None)` | Resolve and inject into `ctx.deps` |
+| `set_fallback` | `set_fallback(name, fallbacks)` | Define fallback chain |
+| `set_health_check` | `set_health_check(name, check_fn)` | Register health check |
+| `resolve_with_fallback` | `resolve_with_fallback(name)` | Resolve with auto-fallback |
+| `resolve_any` | `resolve_any(*names)` | Resolve first available |
+| `set_cluster_registry` | `set_cluster_registry(registry)` | Connect to cluster |
+| `has` | `has(name)` | Check if service exists |
+| `register_many` | `register_many(services)` | Batch registration |
+| `resolve_or_none` | `resolve_or_none(name)` | Safe resolve (no exception) |
 
 ### Scopes
 
@@ -154,6 +162,41 @@ Register DI engine as Intent handlers.
 | `singleton` | One instance, shared everywhere |
 | `transient` | New instance on every resolve |
 | `per_user` | One instance per `user_id` |
+
+### Fault Tolerance
+
+```python
+from evoid_di import di
+
+# Fallback chain
+di.set_fallback("storage.postgresql", ["storage.sqlite", "cache.redis"])
+
+# Health check
+di.set_health_check("cache.redis", lambda: redis.ping())
+
+# Auto-fallback (never crashes)
+storage = di.resolve_with_fallback("storage.postgresql")
+# Tries: postgresql → sqlite → redis → cluster → None
+
+# Resolve first available
+cache = di.resolve_any("cache.redis", "cache.memory")
+```
+
+### Cluster Integration
+
+```python
+from evoid_cluster import ClusterBridge
+
+bridge = ClusterBridge(config)
+await bridge.start()
+
+# Connect registry to DI
+di.set_cluster_registry(bridge._registry)
+
+# Remote services become fallbacks
+storage = di.resolve("storage.postgresql")
+# If not local, checks cluster peers
+```
 
 ---
 

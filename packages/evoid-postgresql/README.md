@@ -22,7 +22,7 @@
 ## Quick Start
 
 ```bash
-pip install evoid-postgresql
+uv add evoid-postgresql
 ```
 
 ### Method 1: Intent Handler (Recommended)
@@ -123,9 +123,24 @@ Factory function for direct API access.
 
 ## Dependencies
 
-- `evoid>=0.4.0`
+- `evoid>=0.4.3`
+- `evoid-di>=0.1.0`
 - `sqlalchemy[asyncio]>=2.0.0`
 - `asyncpg>=0.29.0`
+
+## DI Integration
+
+Registers as `storage.postgresql` in evoid-di:
+
+```python
+from evoid_di import di
+
+# Primary storage for critical data
+di.set_fallback("storage.postgresql", ["storage.sqlite", "cache.redis"])
+
+# Auto-fallback on failure
+storage = di.resolve_with_fallback("storage.postgresql")
+```
 
 ## Links
 

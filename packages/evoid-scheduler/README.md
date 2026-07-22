@@ -22,7 +22,7 @@
 ## Quick Start
 
 ```bash
-pip install evoid-scheduler
+uv add evoid-scheduler
 ```
 
 ### Method 1: Intent Handler (Recommended)
@@ -99,6 +99,18 @@ Register scheduler as Intent handlers.
 | `LOW` | 4 | Analytics, logging |
 
 ---
+
+## DI Integration
+
+All plugins register with evoid-di for automatic service discovery and fault tolerance.
+
+```python
+from evoid_di import di
+
+# Resolve with fallback
+storage = di.resolve_with_fallback("storage.postgresql")
+# Tries: postgresql → sqlite → redis → cluster peers → None
+```
 
 ## Dependencies
 

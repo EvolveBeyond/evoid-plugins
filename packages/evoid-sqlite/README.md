@@ -22,7 +22,7 @@
 ## Quick Start
 
 ```bash
-pip install evoid-sqlite
+uv add evoid-sqlite
 ```
 
 ### Method 1: Intent Handler (Recommended)
@@ -129,8 +129,24 @@ Factory function for direct API access.
 
 ## Dependencies
 
-- `evoid>=0.4.0`
+- `evoid>=0.4.3`
+- `evoid-di>=0.1.0`
 - `aiosqlite>=0.20.0`
+
+## DI Integration
+
+Registers as `storage.sqlite` in evoid-di:
+
+```python
+from evoid_di import di
+
+# Auto-registered when you call register_handlers()
+di.register("storage.sqlite", lambda: SQLiteStorage("app.db"))
+
+# Resolve with fallback
+storage = di.resolve_with_fallback("storage.postgresql")
+# Falls back to storage.sqlite if postgresql fails
+```
 
 ## Links
 

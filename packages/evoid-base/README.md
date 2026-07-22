@@ -152,7 +152,7 @@ Checks:
 ## Installation
 
 ```bash
-pip install evoid-base
+uv add evoid-base
 ```
 
 ## Links

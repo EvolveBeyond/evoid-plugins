@@ -22,7 +22,7 @@
 ## Quick Start
 
 ```bash
-pip install evoid-smart-storage
+uv add evoid-smart-storage
 ```
 
 ### Method 1: Intent Handler (Recommended)
@@ -110,6 +110,18 @@ Register Smart Storage as Intent handlers.
 | `health` | `async health()` | `bool` | Check all backends |
 
 ---
+
+## DI Integration
+
+All plugins register with evoid-di for automatic service discovery and fault tolerance.
+
+```python
+from evoid_di import di
+
+# Resolve with fallback
+storage = di.resolve_with_fallback("storage.postgresql")
+# Tries: postgresql → sqlite → redis → cluster peers → None
+```
 
 ## Dependencies
 

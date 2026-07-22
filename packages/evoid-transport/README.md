@@ -23,7 +23,7 @@
 ## Quick Start
 
 ```bash
-pip install evoid-transport
+uv add evoid-transport
 ```
 
 ### Method 1: Intent Handler (Recommended)
@@ -103,6 +103,18 @@ Register UDP transport as Intent handlers.
 | `send_intent_to_client` | `async send_intent_to_client(addr, name, data)` | Send to specific client |
 
 ---
+
+## DI Integration
+
+All plugins register with evoid-di for automatic service discovery and fault tolerance.
+
+```python
+from evoid_di import di
+
+# Resolve with fallback
+storage = di.resolve_with_fallback("storage.postgresql")
+# Tries: postgresql → sqlite → redis → cluster peers → None
+```
 
 ## Dependencies
 

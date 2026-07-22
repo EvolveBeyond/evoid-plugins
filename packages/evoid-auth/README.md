@@ -22,7 +22,7 @@
 ## Quick Start
 
 ```bash
-pip install evoid-auth
+uv add evoid-auth
 ```
 
 ### Method 1: Intent Handler (Recommended)
@@ -162,6 +162,18 @@ async def my_provider(token: str) -> dict:
 ```
 
 ---
+
+## DI Integration
+
+All plugins register with evoid-di for automatic service discovery and fault tolerance.
+
+```python
+from evoid_di import di
+
+# Resolve with fallback
+storage = di.resolve_with_fallback("storage.postgresql")
+# Tries: postgresql → sqlite → redis → cluster peers → None
+```
 
 ## Dependencies
 

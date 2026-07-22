@@ -22,7 +22,7 @@
 ## Quick Start
 
 ```bash
-pip install evoid-cluster
+uv add evoid-cluster
 ```
 
 ### Method 1: Intent Handler (Recommended)
@@ -103,6 +103,18 @@ Register cluster as Intent handlers.
 | `broadcast` | `async broadcast(intent)` | Send intent to all peers |
 
 ---
+
+## DI Integration
+
+All plugins register with evoid-di for automatic service discovery and fault tolerance.
+
+```python
+from evoid_di import di
+
+# Resolve with fallback
+storage = di.resolve_with_fallback("storage.postgresql")
+# Tries: postgresql → sqlite → redis → cluster peers → None
+```
 
 ## Dependencies
 
