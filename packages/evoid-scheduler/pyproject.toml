@@ -1,6 +1,6 @@
 [project]
 name = "evoid-scheduler"
-version = "0.1.2"
+version = "1.0.1"
 description = "Priority-aware scheduler with system metrics and adaptive concurrency for EVOID"
 readme = "README.md"
 license = { text = "MIT" }
