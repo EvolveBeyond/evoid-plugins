@@ -74,9 +74,10 @@ class GameBuild:
 class GameHost:
     """Manages multiple game builds. Zero side effects on existing EVOID code."""
 
-    def __init__(self, chunk_size: int = 256 * 1024) -> None:
+    def __init__(self, chunk_size: int = 256 * 1024, embed_mode: bool = False) -> None:
         self.builds: dict[str, GameBuild] = {}
         self.chunk_size = chunk_size
+        self.embed_mode = embed_mode
 
     def register_build(
         self,
@@ -177,6 +178,8 @@ class GameHost:
         from starlette.responses import HTMLResponse
 
         async def handler(request):
+            if self.embed_mode:
+                return HTMLResponse(self._render_embed(build))
             return HTMLResponse(self._render_index(build))
         return handler
 
@@ -407,13 +410,140 @@ load();
 </body>
 </html>"""
 
+    def _render_embed(self, build: GameBuild) -> str:
+        s = build.splash
+        total_mb = build.manifest.get("total_size", 0) / (1024 * 1024)
+        chunks = build.manifest.get("pck_chunks", 0)
+
+        return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>{build.title}</title>
+<style>
+*{{margin:0;padding:0;box-sizing:border-box}}
+body{{background:transparent;overflow:hidden}}
+canvas{{display:block;width:100%;height:100%}}
+#loader{{position:fixed;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:{s.bg_color};z-index:2;transition:opacity .3s}}
+#loader.hidden{{opacity:0;pointer-events:none}}
+.bar-bg{{width:200px;height:4px;background:rgba(255,255,255,.12);border-radius:2px;margin:0 auto 8px}}
+.bar{{height:100%;width:0%;background:{s.accent_color};border-radius:2px;transition:width .2s}}
+.status{{font-size:.7rem;opacity:.5;text-align:center}}
+</style>
+</head>
+<body>
+<div id="loader">
+  <div>
+    <div class="bar-bg"><div class="bar" id="bar"></div></div>
+    <p class="status" id="status">Loading...</p>
+  </div>
+</div>
+<canvas id="game-canvas"></canvas>
+<script>
+const GAME_ID="{build.game_id}";
+const TOTAL_MB={total_mb:.1f};
+const CHUNKS={chunks};
+const CHUNK_SIZE={build.chunk_size};
+let loaded=0,total=0;
+
+function post(type,data){{
+  if(window.parent!==window){{
+    window.parent.postMessage({{type:"evoid:"+type,...data}},"*");
+  }}
+}}
+
+function update(pct,msg){{
+  document.getElementById("bar").style.width=pct+"%";
+  document.getElementById("status").textContent=msg;
+}}
+
+async function load(){{
+  try{{await navigator.serviceWorker.register("/sw.js")}}catch(e){{}}
+
+  let manifest;
+  try{{
+    const r=await fetch("/manifest.json");
+    manifest=await r.json();
+  }}catch(e){{manifest={{files:{{}},total_size:0,pck_chunks:0}}}}
+
+  total=(manifest.total_size||0)/(1024*1024);
+  update(0,"Loading engine...");
+  post("loading",{{phase:"engine",progress:0}});
+
+  const wasmResp=await fetch("/engine.wasm");
+  const wasmBytes=await wasmResp.arrayBuffer();
+  update(40,"Engine loaded. Loading game data...");
+  post("loading",{{phase:"pck",progress:40}});
+
+  let pckBytes=[];
+  const pckChunks=manifest.pck_chunks||1;
+  for(let i=0;i<pckChunks;i++){{
+    const r=await fetch(`/chunk/${{i}}`);
+    const buf=await r.arrayBuffer();
+    pckBytes.push(new Uint8Array(buf));
+    const pct=40+Math.round((i+1)/pckChunks*55);
+    update(pct,`Game data ${{Math.round((i+1)/pckChunks*100)}}%...`);
+    post("loading",{{phase:"pck",progress:pct}});
+  }}
+
+  let totalLen=0;
+  for(const c of pckBytes) totalLen+=c.length;
+  const merged=new Uint8Array(totalLen);
+  let offset=0;
+  for(const c of pckBytes){{merged.set(c,offset);offset+=c.length;}}
+
+  update(98,"Starting game...");
+  post("loading",{{phase:"start",progress:98}});
+
+  const canvas=document.getElementById("game-canvas");
+  canvas.style.display="block";
+  document.getElementById("loader").classList.add("hidden");
+
+  if(typeof createGodotEngine==="function"){{
+    createGodotEngine(canvas,{{
+      executable: "/engine.wasm",
+      pckData: merged,
+    }});
+  }}else if(window.Godot){{
+    const engine=new Godot();
+    engine.setCanvas(canvas);
+    await engine.start({{executable:"/engine.wasm",pck:merged}});
+  }}
+
+  post("ready",{{game_id:GAME_ID}});
+}}
+
+window.addEventListener("message",(e)=>{{
+  if(!e.data||!e.data.type)return;
+  switch(e.data.type){{
+    case "evoid:focus":
+      document.getElementById("game-canvas")?.focus();
+      break;
+    case "evoid:resize":
+      const c=document.getElementById("game-canvas");
+      if(c){{c.style.width=(e.data.width||"100%");c.style.height=(e.data.height||"100%");}}
+      break;
+  }}
+}});
+
+window.addEventListener("resize",()=>{{
+  const c=document.getElementById("game-canvas");
+  if(c){{c.style.width="100%";c.style.height="100%";}}
+}});
+
+load();
+</script>
+</body>
+</html>"""
+
     def _render_sw(self, build: GameBuild) -> str:
         version = build.manifest.get("files", {}).get("game.pck", {}).get("hash", "v1")
         return f"""// EVOID Game Service Worker — {build.game_id}
 const CACHE="evoid-{build.game_id}-{version}";
 const PRECACHE=[
   "/",
-  "/engine.js",
+  "/index.js",
   "/engine.wasm",
   "/manifest.json",
 ];
@@ -432,8 +562,8 @@ self.addEventListener("fetch",e=>{{
   const url=new URL(e.request.url);
   const path=url.pathname;
 
-  // engine.wasm, engine.js — cache-first, immutable
-  if(path==="/engine.wasm"||path==="/engine.js"){{
+  // engine.wasm, index.js — cache-first, immutable
+  if(path==="/engine.wasm"||path==="/index.js"||path==="/engine.js"){{
     e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request)));
     return;
   }}
