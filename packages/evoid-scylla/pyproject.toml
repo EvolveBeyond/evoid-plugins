@@ -1,6 +1,6 @@
 [project]
 name = "evoid-scylla"
-version = "0.1.1"
+version = "0.1.2"
 description = "ScyllaDB/Cassandra storage engine for EVOID"
 readme = "README.md"
 keywords = ["evoid", "iop", "intent-oriented", "scylla"]

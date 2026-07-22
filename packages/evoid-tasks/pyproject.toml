@@ -1,6 +1,6 @@
 [project]
 name = "evoid-tasks"
-version = "0.1.1"
+version = "0.1.2"
 description = "Background tasks with structured logging for EVOID"
 readme = "README.md"
 keywords = ["evoid", "iop", "intent-oriented", "tasks"]

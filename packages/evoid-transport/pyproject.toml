@@ -1,6 +1,6 @@
 [project]
 name = "evoid-transport"
-version = "0.1.1"
+version = "0.1.2"
 description = "Low-latency UDP transport for EVOID — replaces WebSocket with ENet-level performance"
 readme = "README.md"
 license = { text = "MIT" }

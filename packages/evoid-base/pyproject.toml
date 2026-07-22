@@ -1,6 +1,6 @@
 [project]
 name = "evoid-base"
-version = "0.1.1"
+version = "0.1.2"
 description = "Base contracts and utilities for EVOID plugins"
 keywords = ["evoid", "iop", "intent-oriented", "base"]
 requires-python = ">=3.12"

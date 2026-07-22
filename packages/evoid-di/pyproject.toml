@@ -1,6 +1,6 @@
 [project]
 name = "evoid-di"
-version = "0.1.1"
+version = "0.1.2"
 description = "Dependency injection engine for EVOID — from simple to advanced"
 readme = "README.md"
 keywords = ["evoid", "iop", "intent-oriented", "di"]

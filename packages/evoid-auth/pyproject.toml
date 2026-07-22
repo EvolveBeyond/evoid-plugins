@@ -1,6 +1,6 @@
 [project]
 name = "evoid-auth"
-version = "0.1.1"
+version = "0.1.2"
 description = "Auth engine for EVOID — bring your own provider"
 readme = "README.md"
 keywords = ["evoid", "iop", "intent-oriented", "auth"]

@@ -1,6 +1,6 @@
 [project]
 name = "evoid-cluster"
-version = "0.1.1"
+version = "0.1.2"
 description = "Cluster plugin for evoid — connect multiple nodes into a unified system"
 readme = "README.md"
 license = { text = "MIT" }

@@ -1,6 +1,6 @@
 [project]
 name = "evoid-dashboard"
-version = "0.1.1"
+version = "0.1.2"
 description = "Monitoring dashboard for EVOID — service map, data lineage, DB viewer, logs"
 readme = "README.md"
 keywords = ["evoid", "iop", "intent-oriented", "dashboard"]
