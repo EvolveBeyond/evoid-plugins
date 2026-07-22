@@ -1,17 +1,25 @@
-"""DI Engine — simple registration to context-aware routing.
+"""DI Engine — simple registration to context-aware routing with fault tolerance.
 
 Levels:
   1. register/resolve by name
   2. scoped: singleton, transient, per_user
   3. context-aware: routing rules based on Intent/Level/Metadata/User
+
+Fault Tolerance:
+  - Fallback chains: service.primary → service.secondary → None
+  - Health checking: verify service before using
+  - Graceful degradation: log errors, return defaults
 """
 
 from __future__ import annotations
 
+import logging
 from typing import Any, Callable
 
 from .rules import RuleSet
 from .context_extractor import extract_context
+
+logger = logging.getLogger("evoid.di")
 
 
 class DIEngine:
@@ -41,6 +49,7 @@ class DIEngine:
     __slots__ = (
         "_factories", "_scopes", "_singletons", "_per_user", "_max_per_user",
         "_impl_registry", "_services_config", "_rule_sets",
+        "_fallbacks", "_health_checks", "_unhealthy",
     )
 
     def __init__(
@@ -65,6 +74,11 @@ class DIEngine:
         self._rule_sets: dict[str, RuleSet] = {}
         for name, rules in (rules_config or {}).items():
             self._rule_sets[name] = RuleSet(rules)
+
+        # Fault tolerance
+        self._fallbacks: dict[str, list[str]] = {}  # service → fallback chain
+        self._health_checks: dict[str, Callable] = {}  # service → health check fn
+        self._unhealthy: set[str] = set()  # currently unhealthy services
 
     # ============================================================
     # Level 1: Simple register/resolve
@@ -239,3 +253,85 @@ class DIEngine:
         if not self.has(name):
             return None
         return self.resolve(name, user_id=user_id)
+
+    # ============================================================
+    # Fault Tolerance
+    # ============================================================
+
+    def set_fallback(self, name: str, fallbacks: list[str]) -> None:
+        """Define fallback chain for a service.
+
+        Example:
+            di.set_fallback("storage.postgresql", ["storage.sqlite", "cache.redis"])
+            # If postgresql fails, try sqlite, then redis
+        """
+        self._fallbacks[name] = fallbacks
+
+    def set_health_check(self, name: str, check_fn: Callable[[], bool]) -> None:
+        """Register a health check function for a service.
+
+        Example:
+            di.set_health_check("cache.redis", lambda: redis.ping())
+        """
+        self._health_checks[name] = check_fn
+
+    def is_healthy(self, name: str) -> bool:
+        """Check if a service is healthy."""
+        if name in self._unhealthy:
+            return False
+        check = self._health_checks.get(name)
+        if check:
+            try:
+                return check()
+            except Exception as e:
+                logger.warning(f"Health check failed for '{name}': {e}")
+                return False
+        return True
+
+    def mark_unhealthy(self, name: str) -> None:
+        """Mark a service as unhealthy."""
+        self._unhealthy.add(name)
+        logger.warning(f"Service '{name}' marked as unhealthy")
+
+    def mark_healthy(self, name: str) -> None:
+        """Mark a service as healthy again."""
+        self._unhealthy.discard(name)
+
+    def resolve_with_fallback(self, name: str, user_id: str | None = None) -> Any | None:
+        """Resolve with automatic fallback chain.
+
+        Tries the primary service first, then fallbacks in order.
+        Returns None if all fail (never raises).
+        """
+        # Try primary
+        if self.has(name) and self.is_healthy(name):
+            try:
+                return self.resolve(name, user_id=user_id)
+            except Exception as e:
+                logger.error(f"Failed to resolve '{name}': {e}")
+                self.mark_unhealthy(name)
+
+        # Try fallbacks
+        for fallback_name in self._fallbacks.get(name, []):
+            if self.has(fallback_name) and self.is_healthy(fallback_name):
+                try:
+                    logger.info(f"Falling back from '{name}' to '{fallback_name}'")
+                    return self.resolve(fallback_name, user_id=user_id)
+                except Exception as e:
+                    logger.error(f"Fallback '{fallback_name}' also failed: {e}")
+                    self.mark_unhealthy(fallback_name)
+
+        logger.warning(f"All services failed for '{name}', returning None")
+        return None
+
+    def resolve_any(self, *names: str, user_id: str | None = None) -> Any | None:
+        """Resolve the first available service from a list.
+
+        Example:
+            di.resolve_any("cache.redis", "cache.memory", "storage.sqlite")
+        """
+        for name in names:
+            result = self.resolve_with_fallback(name, user_id=user_id)
+            if result is not None:
+                return result
+        return None

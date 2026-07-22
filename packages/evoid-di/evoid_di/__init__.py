@@ -38,13 +38,13 @@ def reset():
 
 MANIFEST = {
     "name": "evoid-di",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "type": "engine",
-    "description": "Dependency injection engine for EVOID",
+    "description": "Dependency injection engine for EVOID with fault tolerance",
     "entry_point": "evoid_di:register_plugin",
-    "dependencies": ["evoid>=0.4.0"],
-    "evoid_version": ">=0.4.0",
-    "tags": ["di", "dependency-injection"],
+    "dependencies": ["evoid>=0.4.3"],
+    "evoid_version": ">=0.4.3",
+    "tags": ["di", "dependency-injection", "fault-tolerance"],
 }
 
 
