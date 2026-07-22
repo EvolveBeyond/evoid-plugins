@@ -1,12 +1,12 @@
 [project]
 name = "evoid-base"
-version = "0.1.0"
+version = "0.1.1"
 description = "Base contracts and utilities for EVOID plugins"
 keywords = ["evoid", "iop", "intent-oriented", "base"]
 requires-python = ">=3.12"
 license = "MIT"
 dependencies = [
-    "evoid>=0.4.0",
+    "evoid>=0.4.3",
 ]
 
 [build-system]

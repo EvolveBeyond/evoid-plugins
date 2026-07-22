@@ -1,6 +1,6 @@
 [project]
 name = "evoid-scheduler"
-version = "0.1.0"
+version = "0.1.1"
 description = "Priority-aware scheduler with system metrics and adaptive concurrency for EVOID"
 readme = "README.md"
 license = { text = "MIT" }
@@ -20,7 +20,8 @@ classifiers = [
     "Topic :: System :: Distributed Computing",
 ]
 dependencies = [
-    "evoid>=0.4.0",
+    "evoid>=0.4.3",
+    "evoid-di>=0.1.0",
 ]
 
 [project.urls]

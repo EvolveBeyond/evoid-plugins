@@ -1,6 +1,6 @@
 [project]
 name = "evoid-cluster"
-version = "0.1.0"
+version = "0.1.1"
 description = "Cluster plugin for evoid — connect multiple nodes into a unified system"
 readme = "README.md"
 license = { text = "MIT" }
@@ -18,7 +18,8 @@ classifiers = [
     "Topic :: Software Development :: Libraries",
 ]
 dependencies = [
-    "evoid>=0.4.0",
+    "evoid>=0.4.3",
+    "evoid-di>=0.1.0",
     "websockets>=12.0",
     "cryptography>=42.0",
 ]

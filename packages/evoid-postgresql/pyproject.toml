@@ -1,13 +1,13 @@
 [project]
 name = "evoid-postgresql"
-version = "0.1.0"
+version = "0.1.1"
 description = "PostgreSQL storage engine via SQLAlchemy for EVOID"
 readme = "README.md"
 keywords = ["evoid", "iop", "intent-oriented", "postgresql"]
 requires-python = ">=3.12"
 license = "MIT"
 dependencies = [
-    "evoid>=0.4.0",
+    "evoid>=0.4.3",
     "sqlalchemy[asyncio]>=2.0.0",
     "asyncpg>=0.29.0",
 ]

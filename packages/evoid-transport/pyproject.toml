@@ -1,6 +1,6 @@
 [project]
 name = "evoid-transport"
-version = "0.1.0"
+version = "0.1.1"
 description = "Low-latency UDP transport for EVOID — replaces WebSocket with ENet-level performance"
 readme = "README.md"
 license = { text = "MIT" }
@@ -19,8 +19,8 @@ classifiers = [
     "Topic :: Games/Entertainment",
 ]
 dependencies = [
-    "evoid>=0.4.0",
-    "evoid-godot>=1.0.0",
+    "evoid>=0.4.3",
+    "evoid-godot>=0.1.0",
 ]
 
 [project.optional-dependencies]

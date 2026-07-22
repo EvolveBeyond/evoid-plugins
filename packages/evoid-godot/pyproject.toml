@@ -1,6 +1,6 @@
 [project]
 name = "evoid-godot"
-version = "0.1.0"
+version = "0.1.1"
 description = "Godot game integration adapter for EVOID — connect Godot games to EVOID server"
 readme = "README.md"
 license = { text = "MIT" }
@@ -19,7 +19,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries",
 ]
 dependencies = [
-    "evoid>=0.4.0",
+    "evoid>=0.4.3",
 ]
 
 [project.urls]
