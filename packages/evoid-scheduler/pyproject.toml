@@ -21,6 +21,7 @@ classifiers = [
 ]
 dependencies = [
     "evoid>=0.4.3",
+    "evoid-di>=0.1.0",
 ]
 
 [project.urls]

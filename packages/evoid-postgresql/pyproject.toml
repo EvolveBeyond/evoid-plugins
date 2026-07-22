@@ -8,6 +8,7 @@ requires-python = ">=3.12"
 license = "MIT"
 dependencies = [
     "evoid>=0.4.3",
+    "evoid-di>=0.1.0",
     "sqlalchemy[asyncio]>=2.0.0",
     "asyncpg>=0.29.0",
 ]
