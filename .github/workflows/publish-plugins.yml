@@ -27,8 +27,9 @@ jobs:
           done
 
       - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          packages-dir: dist/
-          password: ${{ secrets.PYPI_TOKEN }}
-          skip-existing: true
+        run: |
+          for whl in dist/*.whl; do
+            echo "Publishing $(basename $whl)..."
+            uv publish "$whl" --token "${{ secrets.PYPI_TOKEN }}" 2>&1 || true
+            sleep 15
+          done
