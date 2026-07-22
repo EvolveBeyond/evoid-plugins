@@ -45,28 +45,34 @@ def register_handlers(config: dict | None = None) -> None:
 
     IOP: Smart Storage routes storage Intents to different backends
     based on data type, intent level, and metadata.
+    Registers with DI as 'storage' for unified access.
     """
+    from evoid_di import di
     from evoid.core import register as register_intent, register_processor
     from evoid.core.intents import STORAGE_READ, STORAGE_WRITE, STORAGE_DELETE, STORAGE_HEALTH
 
     _config = config or {}
-    _storage = SmartStorage(_config)
+    di.register("storage", lambda: SmartStorage(_config), scope="singleton")
 
     async def handle_read(ctx):
+        storage = di.resolve("storage")
         key = ctx.intent.metadata.get("key")
-        return await _storage.read(key)
+        return await storage.read(key)
 
     async def handle_write(ctx):
+        storage = di.resolve("storage")
         key = ctx.intent.metadata.get("key")
         value = ctx.intent.metadata.get("value")
-        return await _storage.write(key, value)
+        return await storage.write(key, value)
 
     async def handle_delete(ctx):
+        storage = di.resolve("storage")
         key = ctx.intent.metadata.get("key")
-        return await _storage.delete(key)
+        return await storage.delete(key)
 
     async def handle_health(ctx):
-        return await _storage.health()
+        storage = di.resolve("storage")
+        return await storage.health()
 
     register_intent(STORAGE_READ)
     register_intent(STORAGE_WRITE)
