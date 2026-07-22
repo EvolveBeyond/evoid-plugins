@@ -100,33 +100,39 @@ def register_handlers(url: str = "redis://localhost:6379", prefix: str = "evoid:
     """Register Redis cache as Intent handlers.
 
     IOP: Each cache operation is an Intent.
-    This function wires Redis to handle cache Intents.
+    Registers with DI as 'cache.redis' for smart-storage routing.
     """
+    from evoid_di import di
     from evoid.core import register as register_intent, register_processor
     from evoid.core.intents import CACHE_GET, CACHE_SET, CACHE_DELETE, CACHE_EXISTS, CACHE_HEALTH
 
-    _cache = RedisCache(url=url, prefix=prefix)
+    di.register("cache.redis", lambda: RedisCache(url=url, prefix=prefix), scope="singleton")
 
     async def handle_get(ctx):
+        cache = di.resolve("cache.redis")
         key = ctx.intent.metadata.get("key")
-        return await _cache.get(key)
+        return await cache.get(key)
 
     async def handle_set(ctx):
+        cache = di.resolve("cache.redis")
         key = ctx.intent.metadata.get("key")
         value = ctx.intent.metadata.get("value")
         ttl = ctx.intent.metadata.get("ttl")
-        return await _cache.set(key, value, ttl)
+        return await cache.set(key, value, ttl)
 
     async def handle_delete(ctx):
+        cache = di.resolve("cache.redis")
         key = ctx.intent.metadata.get("key")
-        return await _cache.delete(key)
+        return await cache.delete(key)
 
     async def handle_exists(ctx):
+        cache = di.resolve("cache.redis")
         key = ctx.intent.metadata.get("key")
-        return await _cache.exists(key)
+        return await cache.exists(key)
 
     async def handle_health(ctx):
-        return await _cache.health()
+        cache = di.resolve("cache.redis")
+        return await cache.health()
 
     register_intent(CACHE_GET)
     register_intent(CACHE_SET)

@@ -3,6 +3,7 @@
 Three levels of complexity:
 
 Level 1 (Simple): register/resolve by name
+    from evoid_di import di
     di.register("db", create_db)
     db = di.resolve("db")
 
@@ -13,13 +14,27 @@ Level 2 (Scoped): singleton, transient, per_user
 Level 3 (Advanced): context-aware routing rules
     di.register("notifier", email, when={"level": "critical"})
     di.register("notifier", memory, default=True)
+
+Global instance:
+    from evoid_di import di
+    di.register("storage.sqlite", SQLiteStorage, scope="singleton")
+    storage = di.resolve("storage.sqlite")
 """
 
 from .engine import DIEngine
 from .rules import Rule, RuleSet
 from .context_extractor import extract_context
 
-__all__ = ["DIEngine", "Rule", "RuleSet", "extract_context"]
+__all__ = ["DIEngine", "Rule", "RuleSet", "extract_context", "di", "reset"]
+
+# Global DI instance — all plugins register here
+di = DIEngine()
+
+
+def reset():
+    """Reset global DI (for testing)."""
+    global di
+    di = DIEngine()
 
 MANIFEST = {
     "name": "evoid-di",

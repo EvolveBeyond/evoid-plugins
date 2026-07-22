@@ -505,6 +505,8 @@ def register_handlers(host: str = "0.0.0.0", port: int = 9000) -> None:
     """Register UDP transport as Intent handlers.
 
     IOP: Transport operations are Intents for network communication.
+    Registers with DI as 'transport.udp' for dependency resolution.
     """
-    # Transport doesn't use standard storage/cache Intents
-    # It manages UDP packet sending/receiving
+    from evoid_di import di
+
+    di.register("transport.udp", lambda: EvoidUDPPort(host=host, port=port), scope="singleton")

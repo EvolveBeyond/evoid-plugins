@@ -55,6 +55,8 @@ def register_handlers(host: str = "0.0.0.0", port: int = 8001) -> None:
     """Register dashboard as an adapter handler.
 
     IOP: Dashboard is an adapter that exposes monitoring data.
+    Registers with DI as 'dashboard' for dependency resolution.
     """
-    # Dashboard doesn't use standard storage/cache Intents
-    # It's an adapter that creates its own ASGI app
+    from evoid_di import di
+
+    di.register("dashboard", lambda: create_dashboard(host=host, port=port), scope="singleton")

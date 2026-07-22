@@ -30,7 +30,18 @@ class DIEngine:
         # Level 3: Advanced (with rules from config)
         engine = DIEngine(rules_config, implementations)
         instance = await engine.resolve("notifier", ctx)
+
+        # Batch registration
+        engine.register_many({"db": create_db, "cache": create_cache})
+
+        # Safe resolve
+        engine.resolve_or_none("nonexistent")  # returns None
     """
+
+    __slots__ = (
+        "_factories", "_scopes", "_singletons", "_per_user", "_max_per_user",
+        "_impl_registry", "_services_config", "_rule_sets",
+    )
 
     def __init__(
         self,
@@ -213,3 +224,18 @@ class DIEngine:
     def list_services(self) -> list[str]:
         """List all registered services."""
         return list(self._factories.keys() | self._rule_sets.keys())
+
+    def has(self, name: str) -> bool:
+        """Check if a service is registered."""
+        return name in self._factories or name in self._rule_sets
+
+    def register_many(self, services: dict[str, Any], scope: str = "singleton") -> None:
+        """Batch register multiple services."""
+        for name, factory in services.items():
+            self.register(name, factory, scope=scope)
+
+    def resolve_or_none(self, name: str, user_id: str | None = None) -> Any | None:
+        """Resolve a dependency, returning None if not found."""
+        if not self.has(name):
+            return None
+        return self.resolve(name, user_id=user_id)

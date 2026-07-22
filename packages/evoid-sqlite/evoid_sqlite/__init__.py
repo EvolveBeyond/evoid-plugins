@@ -123,28 +123,33 @@ def register_handlers(db_path: str = "evoid.db") -> None:
     """Register SQLite storage as Intent handlers.
 
     IOP: Each storage operation is an Intent.
-    This function wires SQLite to handle storage Intents.
+    Registers with DI as 'storage.sqlite' for smart-storage routing.
     """
+    from evoid_di import di
     from evoid.core import register as register_intent, register_processor
     from evoid.core.intents import STORAGE_READ, STORAGE_WRITE, STORAGE_DELETE, STORAGE_HEALTH
 
-    _storage = SQLiteStorage(db_path=db_path)
+    di.register("storage.sqlite", lambda: SQLiteStorage(db_path=db_path), scope="singleton")
 
     async def handle_read(ctx):
+        storage = di.resolve("storage.sqlite")
         key = ctx.intent.metadata.get("key")
-        return await _storage.read(key)
+        return await storage.read(key)
 
     async def handle_write(ctx):
+        storage = di.resolve("storage.sqlite")
         key = ctx.intent.metadata.get("key")
         value = ctx.intent.metadata.get("value")
-        return await _storage.write(key, value)
+        return await storage.write(key, value)
 
     async def handle_delete(ctx):
+        storage = di.resolve("storage.sqlite")
         key = ctx.intent.metadata.get("key")
-        return await _storage.delete(key)
+        return await storage.delete(key)
 
     async def handle_health(ctx):
-        return await _storage.health()
+        storage = di.resolve("storage.sqlite")
+        return await storage.health()
 
     register_intent(STORAGE_READ)
     register_intent(STORAGE_WRITE)

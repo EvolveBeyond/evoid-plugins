@@ -21,12 +21,12 @@ __all__ = [
 
 MANIFEST = {
     "name": "evoid-godot",
-    "version": "1.0.0",
+    "version": "0.1.1",
     "type": "adapter",
     "description": "Godot game integration adapter for EVOID",
     "entry_point": "evoid_godot:register_plugin",
-    "dependencies": ["evoid>=0.4.0"],
-    "evoid_version": ">=0.4.0",
+    "dependencies": ["evoid>=0.4.3"],
+    "evoid_version": ">=0.4.3",
     "tags": ["godot", "game", "websocket", "adapter", "hosting", "web"],
 }
 
@@ -39,7 +39,7 @@ def register_plugin():
         name="godot",
         type="adapter",
         factory=create_game_handler,
-        version="1.0.0",
+        version="0.1.1",
         description="Godot game integration adapter",
     )
 
@@ -48,6 +48,8 @@ def register_handlers() -> None:
     """Register Godot adapter as Intent handlers.
 
     IOP: Godot game operations are Intents.
+    Registers with DI as 'godot' for dependency resolution.
     """
-    # Godot is an adapter, not a storage/cache engine
-    # It manages WebSocket connections to Godot games
+    from evoid_di import di
+
+    di.register("godot", create_game_handler, scope="singleton")

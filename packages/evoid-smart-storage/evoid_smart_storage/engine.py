@@ -28,11 +28,15 @@ class SmartStorage:
         self._setup_complete = False
 
     async def setup(self):
-        """Initialize all backend engines from the mapping."""
+        """Initialize all backend engines from DI.
+
+        Resolves backends like 'storage.sqlite', 'cache.redis', etc.
+        Multi-write: 'memory+redis' resolves both from DI.
+        """
         if self._setup_complete:
             return
 
-        from evoid.engines.plugin import resolve as resolve_engine
+        from evoid_di import di
 
         engine_names = set(self.mapping.values())
         for target in self.user_connections.values():
@@ -41,9 +45,9 @@ class SmartStorage:
         for name in engine_names:
             if "+" in name:
                 parts = name.split("+")
-                self._engines[name] = [resolve_engine(p, "engine") for p in parts]
+                self._engines[name] = [di.resolve(p) for p in parts]
             else:
-                self._engines[name] = resolve_engine(name, "engine")
+                self._engines[name] = di.resolve(name)
 
         self._setup_complete = True
 

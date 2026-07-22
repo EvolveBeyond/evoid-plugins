@@ -54,19 +54,19 @@ def register_handlers(max_concurrent: int = 10) -> None:
 
     IOP: Task operations are Intents.
     The scheduler manages background execution.
+    Registers with DI as 'scheduler.tasks' for dependency resolution.
     """
-    from evoid.core import register as register_intent, register_processor
+    from evoid_di import di
 
-    # Task scheduler doesn't have standard Intent categories
-    # but we register it as an engine for consistency
+    di.register("scheduler.tasks", lambda: scheduler, scope="singleton")
+
     async def handle_task_run(ctx):
+        sched = di.resolve("scheduler.tasks")
         func = ctx.intent.metadata.get("func")
         args = ctx.intent.metadata.get("args", ())
         kwargs = ctx.intent.metadata.get("kwargs", {})
-        return await scheduler.run(func, *args, **kwargs)
+        return await sched.run(func, *args, **kwargs)
 
     async def handle_task_status(ctx):
-        return {"active": scheduler.active}
-
-    # Note: Tasks don't have standard Intent categories
-    # They use custom Intents or direct scheduler access
+        sched = di.resolve("scheduler.tasks")
+        return {"active": sched.active}

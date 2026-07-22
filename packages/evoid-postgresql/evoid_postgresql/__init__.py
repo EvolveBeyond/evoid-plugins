@@ -124,26 +124,34 @@ def register_plugin():
 
 
 def register_handlers(url: str = "postgresql+asyncpg://localhost/evoid") -> None:
-    """Register PostgreSQL storage as Intent handlers."""
+    """Register PostgreSQL storage as Intent handlers.
+
+    Registers with DI as 'storage.postgresql' for smart-storage routing.
+    """
+    from evoid_di import di
     from evoid.core import register as register_intent, register_processor
     from evoid.core.intents import STORAGE_READ, STORAGE_WRITE, STORAGE_DELETE, STORAGE_HEALTH
 
-    _storage = PostgresStorage(url=url)
+    di.register("storage.postgresql", lambda: PostgresStorage(url=url), scope="singleton")
 
     async def handle_read(ctx):
-        return await _storage.read(ctx.intent.metadata.get("key"))
+        storage = di.resolve("storage.postgresql")
+        return await storage.read(ctx.intent.metadata.get("key"))
 
     async def handle_write(ctx):
-        return await _storage.write(
+        storage = di.resolve("storage.postgresql")
+        return await storage.write(
             ctx.intent.metadata.get("key"),
             ctx.intent.metadata.get("value"),
         )
 
     async def handle_delete(ctx):
-        return await _storage.delete(ctx.intent.metadata.get("key"))
+        storage = di.resolve("storage.postgresql")
+        return await storage.delete(ctx.intent.metadata.get("key"))
 
     async def handle_health(ctx):
-        return await _storage.health()
+        storage = di.resolve("storage.postgresql")
+        return await storage.health()
 
     register_intent(STORAGE_READ)
     register_intent(STORAGE_WRITE)

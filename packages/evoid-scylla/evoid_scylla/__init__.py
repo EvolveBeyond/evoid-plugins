@@ -150,26 +150,38 @@ def register_handlers(
     port: int = 9042,
     keyspace: str = "evoid",
 ) -> None:
-    """Register ScyllaDB storage as Intent handlers."""
+    """Register ScyllaDB storage as Intent handlers.
+
+    Registers with DI as 'storage.scylla' for smart-storage routing.
+    """
+    from evoid_di import di
     from evoid.core import register as register_intent, register_processor
     from evoid.core.intents import STORAGE_READ, STORAGE_WRITE, STORAGE_DELETE, STORAGE_HEALTH
 
-    _storage = ScyllaStorage(contact_points=contact_points, port=port, keyspace=keyspace)
+    di.register(
+        "storage.scylla",
+        lambda: ScyllaStorage(contact_points=contact_points, port=port, keyspace=keyspace),
+        scope="singleton",
+    )
 
     async def handle_read(ctx):
-        return await _storage.read(ctx.intent.metadata.get("key"))
+        storage = di.resolve("storage.scylla")
+        return await storage.read(ctx.intent.metadata.get("key"))
 
     async def handle_write(ctx):
-        return await _storage.write(
+        storage = di.resolve("storage.scylla")
+        return await storage.write(
             ctx.intent.metadata.get("key"),
             ctx.intent.metadata.get("value"),
         )
 
     async def handle_delete(ctx):
-        return await _storage.delete(ctx.intent.metadata.get("key"))
+        storage = di.resolve("storage.scylla")
+        return await storage.delete(ctx.intent.metadata.get("key"))
 
     async def handle_health(ctx):
-        return await _storage.health()
+        storage = di.resolve("storage.scylla")
+        return await storage.health()
 
     register_intent(STORAGE_READ)
     register_intent(STORAGE_WRITE)

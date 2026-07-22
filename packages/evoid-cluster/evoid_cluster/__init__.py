@@ -61,6 +61,8 @@ def register_handlers(config: dict | None = None) -> None:
     """Register cluster as Intent handlers.
 
     IOP: Cluster operations are Intents routed across nodes.
+    Registers with DI as 'cluster' for dependency resolution.
     """
-    # Cluster doesn't use standard storage/cache Intents
-    # It manages inter-node communication via message bus
+    from evoid_di import di
+
+    di.register("cluster", lambda: ClusterBridge(config), scope="singleton")

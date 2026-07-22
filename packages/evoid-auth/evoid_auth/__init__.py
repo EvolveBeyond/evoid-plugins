@@ -69,9 +69,13 @@ def register_handlers() -> None:
 
     IOP: Auth operations are Intents.
     authenticate and authorize are registered as pipeline processors.
+    Registers with DI as 'auth' for dependency resolution.
     """
+    from evoid_di import di
     from evoid.core import register as register_intent, register_processor
     from evoid.core.intents import AUTH_AUTHENTICATE, AUTH_AUTHORIZE
+
+    di.register("auth", lambda: {"providers": list_providers()}, scope="singleton")
 
     register_intent(AUTH_AUTHENTICATE)
     register_intent(AUTH_AUTHORIZE)
