@@ -111,17 +111,14 @@ Register Smart Storage as Intent handlers.
 
 ---
 
-## DI Integration
+## How It Works
 
-All plugins register with evoid-di for automatic service discovery and fault tolerance.
+Smart Storage reads the `mapping` config and routes each key to the correct backend:
+- `credentials` → PostgreSQL (sensitive data)
+- `session` → Redis (ephemeral)
+- `logs` → Memory (debug)
 
-```python
-from evoid_di import di
-
-# Resolve with fallback
-storage = di.resolve_with_fallback("storage.postgresql")
-# Tries: postgresql → sqlite → redis → cluster peers → None
-```
+Level routing sends CRITICAL Intents to PostgreSQL, STANDARD to SQLite. Your handler code never sees the routing logic.
 
 ## Dependencies
 

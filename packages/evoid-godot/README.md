@@ -85,17 +85,9 @@ Register Godot adapter as Intent handlers.
 
 ---
 
-## DI Integration
+## How It Works
 
-All plugins register with evoid-di for automatic service discovery and fault tolerance.
-
-```python
-from evoid_di import di
-
-# Resolve with fallback
-storage = di.resolve_with_fallback("storage.postgresql")
-# Tries: postgresql → sqlite → redis → cluster peers → None
-```
+Godot client sends Intents via WebSocket. The adapter converts them to EVOID Intents and routes through the pipeline. Game events like `player_move` use `EPHEMERAL` level (fast, no auth). Real-money actions like `purchase_item` use `CRITICAL` level (full audit).
 
 ## Dependencies
 

@@ -130,22 +130,24 @@ Factory function for direct API access.
 ## Dependencies
 
 - `evoid>=0.4.3`
-- `evoid-di>=0.1.0`
 - `aiosqlite>=0.20.0`
+
+### Optional
+
+- `evoid-di>=0.1.0` — for DI integration (auto-registered when `register_handlers()` is called)
 
 ## DI Integration
 
-Registers as `storage.sqlite` in evoid-di:
+When you call `register_handlers()`, SQLite is auto-registered as `storage.sqlite` in evoid-di:
 
 ```python
 from evoid_di import di
 
-# Auto-registered when you call register_handlers()
-di.register("storage.sqlite", lambda: SQLiteStorage("app.db"))
+# After register_handlers(), this works:
+storage = di.resolve("storage.sqlite")
 
-# Resolve with fallback
-storage = di.resolve_with_fallback("storage.postgresql")
-# Falls back to storage.sqlite if postgresql fails
+# Or as a fallback for PostgreSQL:
+di.set_fallback("storage.postgresql", ["storage.sqlite"])
 ```
 
 ## Links

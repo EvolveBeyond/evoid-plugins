@@ -76,17 +76,14 @@ port = 8001
 
 ---
 
-## DI Integration
+## How It Works
 
-All plugins register with evoid-di for automatic service discovery and fault tolerance.
+The dashboard reads from EVOID's internal registries:
+- Intent registry — all registered Intents with levels and pipelines
+- Processor registry — all registered processors
+- Message bus history — recent Intent executions
 
-```python
-from evoid_di import di
-
-# Resolve with fallback
-storage = di.resolve_with_fallback("storage.postgresql")
-# Tries: postgresql → sqlite → redis → cluster peers → None
-```
+No DI integration needed — it observes the runtime directly.
 
 ## Dependencies
 

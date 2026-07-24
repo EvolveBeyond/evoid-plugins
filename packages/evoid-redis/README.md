@@ -136,20 +136,23 @@ Factory function for direct API access.
 ## Dependencies
 
 - `evoid>=0.4.3`
-- `evoid-di>=0.1.0`
 - `redis[hiredis]>=5.0.0`
+
+### Optional
+
+- `evoid-di>=0.1.0` — for DI integration (auto-registered when `register_handlers()` is called)
 
 ## DI Integration
 
-Registers as `cache.redis` in evoid-di:
+When you call `register_handlers()`, Redis is auto-registered as `cache.redis` in evoid-di:
 
 ```python
 from evoid_di import di
 
-# Auto-registered when you call register_handlers()
-di.register("cache.redis", lambda: RedisCache("redis://localhost"))
+# After register_handlers(), this works:
+cache = di.resolve("cache.redis")
 
-# Use as fallback for storage
+# Or as a fallback for storage:
 di.set_fallback("storage.postgresql", ["cache.redis"])
 ```
 

@@ -100,18 +100,6 @@ Register scheduler as Intent handlers.
 
 ---
 
-## DI Integration
-
-All plugins register with evoid-di for automatic service discovery and fault tolerance.
-
-```python
-from evoid_di import di
-
-# Resolve with fallback
-storage = di.resolve_with_fallback("storage.postgresql")
-# Tries: postgresql → sqlite → redis → cluster peers → None
-```
-
 ## Dependencies
 
 - `evoid>=0.4.0`

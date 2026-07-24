@@ -124,21 +124,24 @@ Factory function for direct API access.
 ## Dependencies
 
 - `evoid>=0.4.3`
-- `evoid-di>=0.1.0`
 - `sqlalchemy[asyncio]>=2.0.0`
 - `asyncpg>=0.29.0`
 
+### Optional
+
+- `evoid-di>=0.1.0` — for DI integration (auto-registered when `register_handlers()` is called)
+
 ## DI Integration
 
-Registers as `storage.postgresql` in evoid-di:
+When you call `register_handlers()`, PostgreSQL is auto-registered as `storage.postgresql` in evoid-di:
 
 ```python
 from evoid_di import di
 
-# Primary storage for critical data
+# After register_handlers(), set up fallback chain:
 di.set_fallback("storage.postgresql", ["storage.sqlite", "cache.redis"])
 
-# Auto-fallback on failure
+# Auto-fallback on failure:
 storage = di.resolve_with_fallback("storage.postgresql")
 ```
 

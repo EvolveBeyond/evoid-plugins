@@ -106,14 +106,18 @@ Register cluster as Intent handlers.
 
 ## DI Integration
 
-All plugins register with evoid-di for automatic service discovery and fault tolerance.
+Cluster connects its registry to evoid-di, making remote services available as fallbacks:
 
 ```python
 from evoid_di import di
+from evoid_cluster import ClusterBridge
 
-# Resolve with fallback
-storage = di.resolve_with_fallback("storage.postgresql")
-# Tries: postgresql → sqlite → redis → cluster peers → None
+bridge = ClusterBridge(config)
+await bridge.start()
+
+# Remote services become available via DI:
+di.set_cluster_registry(bridge._registry)
+storage = di.resolve("storage.postgresql")  # checks peers if not local
 ```
 
 ## Dependencies

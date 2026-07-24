@@ -99,11 +99,14 @@ A higher role satisfies any lower requirement.
 ```python
 from evoid.core.extend import before
 
-# Requires admin role
-before("DELETE:/users", "authenticate", required_role="admin")
+# Wire authenticate to routes — role check happens in your provider
+before("DELETE:/users", "authenticate")
+before("GET:/reports", "authenticate")
 
-# Requires viewer or higher
-before("GET:/reports", "authenticate", required_roles=["viewer", "editor", "admin"])
+# Your provider decides what role is needed per route:
+async def my_auth(token: str) -> dict:
+    user = await db.find_by_token(token)
+    return {"user": user.name, "role": user.role}
 ```
 
 ---
@@ -121,13 +124,14 @@ auth = "auth"
 
 ```python
 from evoid_auth import register_provider
+from evoid.core.extend import before
 
 # Register multiple providers
 register_provider("jwt", jwt_auth_fn)
 register_provider("api_key", api_key_auth_fn)
 
-# Use specific provider in pipeline
-before("GET:/users", "authenticate", provider="jwt")
+# Wire to pipeline — authenticate uses the default provider
+before("GET:/users", "authenticate")
 ```
 
 ---
@@ -162,18 +166,6 @@ async def my_provider(token: str) -> dict:
 ```
 
 ---
-
-## DI Integration
-
-All plugins register with evoid-di for automatic service discovery and fault tolerance.
-
-```python
-from evoid_di import di
-
-# Resolve with fallback
-storage = di.resolve_with_fallback("storage.postgresql")
-# Tries: postgresql → sqlite → redis → cluster peers → None
-```
 
 ## Dependencies
 

@@ -105,14 +105,16 @@ Factory function for direct API access.
 
 ## DI Integration
 
-All plugins register with evoid-di for automatic service discovery and fault tolerance.
+When you call `register_handlers()`, ScyllaDB is auto-registered as `storage.scylla` in evoid-di:
 
 ```python
 from evoid_di import di
 
-# Resolve with fallback
-storage = di.resolve_with_fallback("storage.postgresql")
-# Tries: postgresql → sqlite → redis → cluster peers → None
+# After register_handlers(), set up fallback chain:
+di.set_fallback("storage.scylla", ["storage.sqlite", "cache.redis"])
+
+# Auto-fallback on failure:
+storage = di.resolve_with_fallback("storage.scylla")
 ```
 
 ## Dependencies

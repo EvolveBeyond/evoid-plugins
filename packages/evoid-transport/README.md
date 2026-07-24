@@ -104,22 +104,27 @@ Register UDP transport as Intent handlers.
 
 ---
 
-## DI Integration
+## How It Works
 
-All plugins register with evoid-di for automatic service discovery and fault tolerance.
+UDP transport maps IOP levels to channels:
+- Channel 0 (Reliable) — card plays, purchases (CRITICAL/STANDARD)
+- Channel 1 (Unreliable) — position updates, animations (EPHEMERAL)
+- Channel 2 (Chat) — chat messages (STANDARD)
 
-```python
-from evoid_di import di
-
-# Resolve with fallback
-storage = di.resolve_with_fallback("storage.postgresql")
-# Tries: postgresql → sqlite → redis → cluster peers → None
-```
+The transport doesn't know your game logic. Your Intent's level determines the channel.
 
 ## Dependencies
 
 - `evoid>=0.4.0`
 - Optional: `evoid-godot>=1.0.0` (for Godot integration)
+
+## Build Requirements
+
+This plugin has a Rust core (PyO3 + maturin). Pre-built wheels are available on PyPI for Linux/macOS/Windows. If building from source:
+
+- Rust toolchain (`rustup`)
+- Python development headers (`python3-dev`)
+- `maturin` (`pip install maturin`)
 
 ## Links
 
