@@ -1,0 +1,34 @@
+# EVOID Maubot Plugin Configuration
+
+# EVOID service name for this bot instance
+service_name: maubot-bot
+
+# Intent levels for different command types
+# ephemeral: validate only
+# standard: validate + authorize
+# critical: validate + authorize + audit + protect
+default_level: standard
+
+# Command prefix (without !)
+command_prefix: jitsi
+
+# Jitsi server configuration
+jitsi:
+  server_url: ""
+  muc_domain: ""
+  # Admin credentials for server-side operations
+  admin_username: ""
+  admin_password: ""
+
+# Storage configuration
+storage:
+  # SQLite database file path
+  db_path: jitsi-bot.db
+  # Enable smart storage routing (requires evoid-smart-storage)
+  enable_smart_routing: true
+
+# Who can use admin commands (Matrix user IDs)
+admin_whitelist: []
+
+# Enable debug logging
+debug: false

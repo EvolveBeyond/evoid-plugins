@@ -1,0 +1,12 @@
+{
+  "name": "evoid-maubot",
+  "version": "0.2.0",
+  "type": "adapter",
+  "description": "EVOID adapter for maubot — bridge Matrix events to EVOID intents with Jitsi support",
+  "author": "EvolveBeyond",
+  "entry_point": "evoid_maubot:register_plugin",
+  "dependencies": ["evoid>=0.4.0", "maubot>=0.1.0", "evoid-sqlite>=0.1.0"],
+  "optional_dependencies": ["evoid-smart-storage>=0.1.0", "evoid-di>=0.1.0"],
+  "evoid_version": ">=0.4.0",
+  "tags": ["maubot", "matrix", "adapter", "jitsi", "sqlite"]
+}
