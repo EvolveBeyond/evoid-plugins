@@ -72,12 +72,17 @@ def register_handlers() -> None:
     Registers with DI as 'auth' for dependency resolution.
     """
     from evoid_di import di
-    from evoid.core import register as register_intent, register_processor
+    from evoid.core.extend import add_intent_with_pipeline
     from evoid.core.intents import AUTH_AUTHENTICATE, AUTH_AUTHORIZE
 
     di.register("auth", lambda: {"providers": list_providers()}, scope="singleton")
 
-    register_intent(AUTH_AUTHENTICATE)
-    register_intent(AUTH_AUTHORIZE)
-    register_processor("auth.authenticate", authenticate)
-    register_processor("auth.authorize", authorize)
+    # CRITICAL level: validate → authorize → audit → protect → handler
+    add_intent_with_pipeline(
+        AUTH_AUTHENTICATE,
+        processors=["validate", "authorize", "audit", "protect", authenticate],
+    )
+    add_intent_with_pipeline(
+        AUTH_AUTHORIZE,
+        processors=["validate", "authorize", "audit", "protect", authorize],
+    )

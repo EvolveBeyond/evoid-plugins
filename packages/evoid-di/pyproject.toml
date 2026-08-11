@@ -1,13 +1,13 @@
 [project]
 name = "evoid-di"
-version = "0.1.2"
+version = "0.2.0"
 description = "Dependency injection engine for EVOID — from simple to advanced"
 readme = "README.md"
 keywords = ["evoid", "iop", "intent-oriented", "di"]
 requires-python = ">=3.12"
 license = "MIT"
 dependencies = [
-    "evoid>=0.4.3",
+    "evoid>=0.6.9",
 ]
 
 [project.optional-dependencies]

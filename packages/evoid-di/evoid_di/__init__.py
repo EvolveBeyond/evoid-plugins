@@ -86,6 +86,8 @@ def _load_implementations(impl_config: dict) -> dict:
     return implementations
 
 
+from evoid import Intent, Level
+
 def register_handlers(
     rules: dict | None = None,
     implementations: dict | None = None,
@@ -95,7 +97,7 @@ def register_handlers(
 
     IOP: Dependency injection is configured via Intent metadata.
     """
-    from evoid.core import register as register_intent, register_processor
+    from evoid.core.extend import add_intent, add_intent_with_pipeline
 
     _rules = rules or {}
     _impls = _load_implementations(implementations or {})

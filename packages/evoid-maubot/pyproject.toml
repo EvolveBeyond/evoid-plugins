@@ -18,7 +18,7 @@ classifiers = [
     "Topic :: Communications :: Chat",
 ]
 dependencies = [
-    "evoid>=0.4.0",
+    "evoid>=0.6.9",
     "maubot>=0.1.0",
     "mautrix>=0.18.0",
 ]

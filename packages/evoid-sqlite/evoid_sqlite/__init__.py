@@ -127,7 +127,7 @@ def register_handlers(db_path: str = "evoid.db") -> None:
     Registers with DI as 'storage.sqlite' for smart-storage routing.
     """
     from evoid_di import di
-    from evoid.core import register as register_intent, register_processor
+    from evoid.core.extend import add_intent_with_pipeline
     from evoid.core.intents import STORAGE_READ, STORAGE_WRITE, STORAGE_DELETE, STORAGE_HEALTH
 
     di.register("storage.sqlite", lambda: SQLiteStorage(db_path=db_path), scope="singleton")
@@ -152,11 +152,9 @@ def register_handlers(db_path: str = "evoid.db") -> None:
         storage = di.resolve("storage.sqlite")
         return await storage.health()
 
-    register_intent(STORAGE_READ)
-    register_intent(STORAGE_WRITE)
-    register_intent(STORAGE_DELETE)
-    register_intent(STORAGE_HEALTH)
-    register_processor("storage.read", handle_read)
-    register_processor("storage.write", handle_write)
-    register_processor("storage.delete", handle_delete)
-    register_processor("storage.health", handle_health)
+    # STANDARD level: validate → authorize → handler
+    add_intent_with_pipeline(STORAGE_READ, processors=["validate", "authorize", handle_read])
+    add_intent_with_pipeline(STORAGE_WRITE, processors=["validate", "authorize", handle_write])
+    add_intent_with_pipeline(STORAGE_DELETE, processors=["validate", "authorize", handle_delete])
+    # EPHEMERAL: validate → handler
+    add_intent_with_pipeline(STORAGE_HEALTH, processors=["validate", handle_health])

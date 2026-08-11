@@ -103,7 +103,7 @@ def register_handlers(url: str = "redis://localhost:6379", prefix: str = "evoid:
     Registers with DI as 'cache.redis' for smart-storage routing.
     """
     from evoid_di import di
-    from evoid.core import register as register_intent, register_processor
+    from evoid.core.extend import add_intent
     from evoid.core.intents import CACHE_GET, CACHE_SET, CACHE_DELETE, CACHE_EXISTS, CACHE_HEALTH
 
     di.register("cache.redis", lambda: RedisCache(url=url, prefix=prefix), scope="singleton")
@@ -134,13 +134,8 @@ def register_handlers(url: str = "redis://localhost:6379", prefix: str = "evoid:
         cache = di.resolve("cache.redis")
         return await cache.health()
 
-    register_intent(CACHE_GET)
-    register_intent(CACHE_SET)
-    register_intent(CACHE_DELETE)
-    register_intent(CACHE_EXISTS)
-    register_intent(CACHE_HEALTH)
-    register_processor("cache.get", handle_get)
-    register_processor("cache.set", handle_set)
-    register_processor("cache.delete", handle_delete)
-    register_processor("cache.exists", handle_exists)
-    register_processor("cache.health", handle_health)
+    add_intent(CACHE_GET, handle_get)
+    add_intent(CACHE_SET, handle_set)
+    add_intent(CACHE_DELETE, handle_delete)
+    add_intent(CACHE_EXISTS, handle_exists)
+    add_intent(CACHE_HEALTH, handle_health)

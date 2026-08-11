@@ -48,7 +48,7 @@ def register_handlers(config: dict | None = None) -> None:
     Registers with DI as 'storage' for unified access.
     """
     from evoid_di import di
-    from evoid.core import register as register_intent, register_processor
+    from evoid.core.extend import add_intent
     from evoid.core.intents import STORAGE_READ, STORAGE_WRITE, STORAGE_DELETE, STORAGE_HEALTH
 
     _config = config or {}
@@ -74,11 +74,7 @@ def register_handlers(config: dict | None = None) -> None:
         storage = di.resolve("storage")
         return await storage.health()
 
-    register_intent(STORAGE_READ)
-    register_intent(STORAGE_WRITE)
-    register_intent(STORAGE_DELETE)
-    register_intent(STORAGE_HEALTH)
-    register_processor("storage.read", handle_read)
-    register_processor("storage.write", handle_write)
-    register_processor("storage.delete", handle_delete)
-    register_processor("storage.health", handle_health)
+    add_intent(STORAGE_READ, handle_read)
+    add_intent(STORAGE_WRITE, handle_write)
+    add_intent(STORAGE_DELETE, handle_delete)
+    add_intent(STORAGE_HEALTH, handle_health)

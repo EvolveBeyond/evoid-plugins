@@ -183,11 +183,11 @@ class TaskScheduler:
             ...
         """
         def decorator(fn: Callable) -> Callable:
-            from evoid import Intent, Level, register, register_processor
+            from evoid import Intent, Level
+            from evoid.core.extend import add_intent, add_intent_with_pipeline
 
             intent_level = Level[level.upper()] if isinstance(level, str) else level
             intent = Intent(name=name, level=intent_level, metadata={"type": "task"})
-            register(intent)
 
             async def processor(ctx) -> dict:
                 try:
@@ -199,11 +199,10 @@ class TaskScheduler:
                 except Exception as e:
                     return {"task": name, "status": "failed", "error": str(e)}
 
-            register_processor(name, processor)
-
             if pipeline:
-                from evoid.core.extend import add_intent_with_pipeline
                 add_intent_with_pipeline(intent, list(pipeline), handler=processor)
+            else:
+                add_intent(intent, processor)
 
             self._log.info(f"Registered as intent: {name} [{intent_level.value}]")
             fn.intent_name = name  # type: ignore

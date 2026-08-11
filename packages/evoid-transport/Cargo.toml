@@ -1,6 +1,6 @@
 [package]
 name = "evoid-transport"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 description = "Low-latency UDP transport for EVOID — replaces WebSocket with ENet-level performance"
 license = "MIT"

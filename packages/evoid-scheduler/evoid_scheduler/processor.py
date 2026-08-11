@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from evoid import register_processor
+from evoid import Intent, Level
+from evoid.core.extend import add_intent_with_pipeline
 from evoid.core import Context
 from .engine import SchedulerEngine, Priority
 
@@ -41,4 +42,8 @@ async def scheduler_processor(ctx: Context) -> dict:
     return {"scheduled": True}
 
 
-register_processor("scheduler", scheduler_processor)
+# EPHEMERAL level for scheduler processor (only validate)
+add_intent_with_pipeline(
+    Intent(name="scheduler", level=Level.EPHEMERAL),
+    processors=["validate", "scheduler"],
+)

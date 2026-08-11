@@ -8,6 +8,23 @@ license = "MIT"
 [tool.uv.workspace]
 members = ["packages/*"]
 
+[tool.uv.sources]
+evoid-di = { workspace = true }
+evoid-base = { workspace = true }
+evoid-auth = { workspace = true }
+evoid-cluster = { workspace = true }
+evoid-dashboard = { workspace = true }
+evoid-godot = { workspace = true }
+evoid-maubot = { workspace = true }
+evoid-postgresql = { workspace = true }
+evoid-redis = { workspace = true }
+evoid-scheduler = { workspace = true }
+evoid-scylla = { workspace = true }
+evoid-smart-storage = { workspace = true }
+evoid-sqlite = { workspace = true }
+evoid-tasks = { workspace = true }
+evoid-transport = { workspace = true }
+
 [tool.ruff]
 line-length = 120
 target-version = "py312"
