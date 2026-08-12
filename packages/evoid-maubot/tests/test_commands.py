@@ -1,8 +1,8 @@
-"""Tests for evoid-maubot command registry."""
+"""Tests for evoid-jitsi-maubot command registry."""
 
 from __future__ import annotations
 
-from evoid_maubot.commands import (
+from evoid_jitsi_maubot.commands import (
     COMMAND_REGISTRY,
     CommandDef,
     _fmt_created,
