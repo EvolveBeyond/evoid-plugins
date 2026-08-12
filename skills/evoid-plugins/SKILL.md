@@ -1,7 +1,7 @@
 ---
 name: evoid-plugins
 description: Build applications with EVOID Intent-Oriented Programming runtime. Use when creating Intents, writing processors, configuring pipelines, building web APIs with @route or @controller, setting up storage/cache/DI/auth, writing plugins, testing with tc(), or deploying EVOID services. Also use for debugging pipeline execution, plugin loading, connection issues, or IOP architecture decisions.
-compatibility: Requires Python 3.12+ and evoid>=0.4.0
+compatibility: Requires Python 3.12+ and evoid>=0.6.9
 metadata:
   author: EvolveBeyond
   version: "2.0"
