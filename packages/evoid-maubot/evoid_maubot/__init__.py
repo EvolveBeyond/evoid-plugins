@@ -15,21 +15,22 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from maubot import Plugin, MessageEvent
+from maubot import MessageEvent, Plugin
 from maubot.handlers import event
 from mautrix.types import EventType
 
 try:
     from evoid import Intent, Level, publish
-    from evoid.native import create_service, on as evoid_on
+    from evoid.native import create_service
+    from evoid.native import on as evoid_on
 
     HAS_EVOID = True
 except ImportError:
     HAS_EVOID = False
 
 try:
-    from evoid_sqlite import SQLiteStorage, create_storage
     from evoid_smart_storage import SmartStorage
+    from evoid_sqlite import create_storage
 
     HAS_STORAGE = True
 except ImportError:
@@ -38,8 +39,9 @@ except ImportError:
 if TYPE_CHECKING:
     from mautrix.util.config import BaseProxyConfig
 
+from .commands import COMMAND_REGISTRY
+from .commands import CommandDef as CommandDef
 from .config import Config
-from .commands import COMMAND_REGISTRY, CommandDef
 
 
 class EvoidMaubot(Plugin):
@@ -203,7 +205,7 @@ class EvoidMaubot(Plugin):
                 "user": event.sender,
                 "room_id": event.room_id,
                 "server_url": self.config["jitsi.server_url"],
-                "muc_domain": self.config["jitsi.muc_domain"],
+                "muc_domain": self.config.get("jitsi.muc_domain", ""),
             },
         )
 
@@ -289,3 +291,8 @@ class EvoidMaubot(Plugin):
             lines.extend(cmds)
         lines.append("\nType !jitsi help <command> for details.")
         return "\n".join(lines)
+
+
+def register_plugin() -> type:
+    """Entry point for EVOID plugin system."""
+    return EvoidMaubot

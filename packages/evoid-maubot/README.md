@@ -48,30 +48,30 @@ zip -9r evoid-maubot.mbp *
 | `!jitsi mute` | Toggle audio mute | |
 | `!jitsi video` | Toggle video mute | |
 | `!jitsi screen` | Toggle screen sharing | |
-| `!jitsi muteall [audio\|video]` | Mute all participants | Yes |
-| `!jitsi muteremote <id> [audio\|video]` | Mute specific participant | Yes |
-| `!jitsi noise [true\|false]` | Toggle noise suppression | |
-| `!jitsi quality <720\|480\|360\|240>` | Set video quality | |
-| `!jitsi audioonly [true\|false]` | Audio only mode | |
-| `!jitsi camera [user\|environment]` | Toggle camera facing | |
+| `!jitsi muteall [audio|video]` | Mute all participants | Yes |
+| `!jitsi muteremote <id> [audio|video]` | Mute specific participant | Yes |
+| `!jitsi noise [true|false]` | Toggle noise suppression | |
+| `!jitsi quality <720|480|360|240>` | Set video quality | |
+| `!jitsi audioonly [true|false]` | Audio only mode | |
+| `!jitsi camera [user|environment]` | Toggle camera facing | |
 | `!jitsi mirror` | Toggle camera mirror | |
 | `!jitsi vbg` | Toggle virtual background dialog | |
-| `!jitsi blur [slight-blur\|blur\|none]` | Set blurred background | |
-| `!jitsi virtualbg [true\|false] [img]` | Set virtual background | |
+| `!jitsi blur [slight-blur|blur|none]` | Set blurred background | |
+| `!jitsi virtualbg [true|false] [img]` | Set virtual background | |
 
 ### Layout
 | Command | Description | Mod |
 |---------|-------------|-----|
 | `!jitsi tile` | Toggle tile view | |
-| `!jitsi settile [true\|false]` | Set tile view | |
+| `!jitsi settile [true|false]` | Set tile view | |
 | `!jitsi filmstrip` | Toggle filmstrip | |
 | `!jitsi chat` | Toggle chat panel | |
 | `!jitsi hand` | Toggle raise hand | |
 | `!jitsi subtitles` | Toggle subtitles | |
-| `!jitsi setsubtitles [true\|false] [lang]` | Set subtitles | |
-| `!jitsi participants [true\|false]` | Toggle participants pane | |
+| `!jitsi setsubtitles [true|false] [lang]` | Set subtitles | |
+| `!jitsi participants [true|false]` | Toggle participants pane | |
 | `!jitsi whiteboard` | Toggle whiteboard | |
-| `!jitsi lobby [true\|false]` | Toggle lobby mode | Yes |
+| `!jitsi lobby [true|false]` | Toggle lobby mode | Yes |
 
 ### Participants
 | Command | Description | Mod |
@@ -80,18 +80,18 @@ zip -9r evoid-maubot.mbp *
 | `!jitsi mod <id>` | Grant moderator | Yes |
 | `!jitsi pin [id]` | Pin participant | |
 | `!jitsi volume <id> <0-1>` | Set volume | |
-| `!jitsi largevideo [id] [camera\|desktop]` | Set large video | |
+| `!jitsi largevideo [id] [camera|desktop]` | Set large video | |
 | `!jitsi names <id:name> [id:name ...]` | Overwrite names locally | |
 | `!jitsi sendto <id> <roomId>` | Send to breakout room | Yes |
 
 ### Moderation
 | Command | Description | Mod |
 |---------|-------------|-----|
-| `!jitsi approveknock <id> <true\|false>` | Approve/reject lobby | Yes |
-| `!jitsi moderation <true\|false> <audio\|video>` | Toggle moderation | Yes |
+| `!jitsi approveknock <id> <true|false>` | Approve/reject lobby participant | Yes |
+| `!jitsi moderation <true|false> <audio|video>` | Toggle moderation | Yes |
 | `!jitsi askunmute <id>` | Ask to unmute | Yes |
-| `!jitsi approvevideo <id>` | Approve video | Yes |
-| `!jitsi reject <id> <audio\|video>` | Reject participant | Yes |
+| `!jitsi approvevideo <id>` | Approve participant for video | Yes |
+| `!jitsi reject <id> <audio|video>` | Reject participant | Yes |
 
 ### Chat
 | Command | Description | Mod |
@@ -106,8 +106,8 @@ zip -9r evoid-maubot.mbp *
 ### Recording
 | Command | Description | Mod |
 |---------|-------------|-----|
-| `!jitsi record <local\|file\|stream> [key]` | Start recording | Yes |
-| `!jitsi stoprecord <local\|file\|stream>` | Stop recording | Yes |
+| `!jitsi record <local|file|stream> [key]` | Start recording | Yes |
+| `!jitsi stoprecord <local|file|stream>` | Stop recording | Yes |
 
 ### Breakout Rooms
 | Command | Description | Mod |
@@ -115,24 +115,25 @@ zip -9r evoid-maubot.mbp *
 | `!jitsi breakout [name]` | Create breakout room | Yes |
 | `!jitsi autobreakout` | Auto-assign participants | Yes |
 | `!jitsi closebreakout <roomId>` | Close breakout room | Yes |
-| `!jitsi joinbreakout [roomId]` | Join breakout room | |
+| `!jitsi joinbreakout [roomId]` | Join a breakout room | |
 | `!jitsi removebreakout <jid>` | Remove breakout room | Yes |
 
 ### Misc
 | Command | Description | Mod |
 |---------|-------------|-----|
-| `!jitsi followme [true\|false]` | Toggle follow me | Yes |
+| `!jitsi followme [true|false] [recorderOnly]` | Toggle follow me | Yes |
 | `!jitsi config <key=value> ...` | Overwrite config | Yes |
 | `!jitsi bandwidth <bps>` | Set assumed bandwidth | |
 | `!jitsi timer [duration] [elapsed]` | Set meeting timer | |
-| `!jitsi resizefilm <width>` | Resize filmstrip | |
+| `!jitsi resizefilm <width>` | Resize filmstrip width | |
 | `!jitsi resizelarge <w> <h>` | Resize large video | |
-| `!jitsi sendcamera <id> [user\|env]` | Request camera change | |
+| `!jitsi sendcamera <id> [user|env]` | Request camera change | |
 | `!jitsi sendtext <id> <text>` | Send private text | |
 
 ## Configuration
 
 ```yaml
+# base-config.yaml
 service_name: maubot-bot
 command_prefix: jitsi
 
@@ -145,11 +146,27 @@ jitsi:
 admin_whitelist:
   - "@admin:example.com"
 
-# Storage (optional)
 storage:
   db_path: jitsi-bot.db
   enable_smart_routing: true
+
+debug: false
 ```
+
+### Configuration Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `service_name` | `maubot-bot` | EVOID service name for intent routing |
+| `command_prefix` | `jitsi` | Matrix command prefix (without `!`) |
+| `jitsi.server_url` | (empty) | Base URL of your Jitsi Meet instance |
+| `jitsi.muc_domain` | (empty) | MUC conference domain |
+| `jitsi.admin_username` | (empty) | Admin username for server-side ops |
+| `jitsi.admin_password` | (empty) | Admin password for server-side ops |
+| `admin_whitelist` | `[]` | Matrix user IDs allowed for moderator commands |
+| `storage.db_path` | `jitsi-bot.db` | SQLite database file path |
+| `storage.enable_smart_routing` | `true` | Enable smart storage routing |
+| `debug` | `false` | Enable debug logging |
 
 ## Storage
 
@@ -160,6 +177,7 @@ pip install evoid-maubot[storage]
 ```
 
 Data stored:
+
 | Type | Namespace | Content |
 |------|-----------|---------|
 | `meeting:*` | meetings | Room ID, name, creator, URL |
@@ -184,7 +202,9 @@ Handler returns: {iframe_command: "startShareVideo", args: {url: "..."}}
 Jitsi executes command in user's browser
 ```
 
-Moderator commands use `level=CRITICAL` for full pipeline validation.
+Moderator commands use `level=CRITICAL` for full pipeline (validate → authorize → audit → protect).
+
+The plugin uses `evoid.native.on` to register intents with the EVOID message bus. Intents are published via `evoid.publish` and routed through the IOP pipeline.
 
 ## Development
 
