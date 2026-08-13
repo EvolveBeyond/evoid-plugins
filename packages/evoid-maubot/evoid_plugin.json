@@ -1,12 +1,12 @@
 {
-  "name": "evoid-jitsi-maubot",
-  "version": "0.2.1",
+  "name": "evoid-maubot",
+  "version": "1.0.0",
   "type": "adapter",
-  "description": "EVOID adapter for maubot — Jitsi Meet management via Matrix commands with EVOID pipeline",
+  "description": "EVOID adapter for maubot — generic framework for Matrix bots with EVOID IOP",
   "author": "EvolveBeyond",
-  "entry_point": "evoid_jitsi_maubot:register_plugin",
-  "dependencies": ["evoid>=0.6.9", "maubot>=0.6.0", "evoid-sqlite>=0.1.0"],
-  "optional_dependencies": ["evoid-smart-storage>=0.1.0", "evoid-di>=0.1.0"],
+  "entry_point": "evoid_maubot:register_plugin",
+  "dependencies": ["evoid>=0.6.9", "maubot>=0.6.0"],
+  "optional_dependencies": ["evoid-sqlite>=0.1.0", "evoid-smart-storage>=0.1.0", "evoid-di>=0.1.0"],
   "evoid_version": ">=0.6.9",
-  "tags": ["maubot", "matrix", "adapter", "jitsi", "sqlite"]
+  "tags": ["maubot", "matrix", "adapter", "framework", "iop"]
 }
