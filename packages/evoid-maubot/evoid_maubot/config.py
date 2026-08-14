@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from mautrix.util.config import BaseProxyConfig
+from mautrix.util.config import BaseProxyConfig, ConfigUpdateHelper
 
 
 class Config(BaseProxyConfig):
@@ -25,3 +25,10 @@ class Config(BaseProxyConfig):
                 "admin_whitelist": [],
             }
         )
+
+    def do_update(self, helper: ConfigUpdateHelper) -> None:
+        """Required by BaseProxyConfig."""
+        helper.copy("service_name")
+        helper.copy("command_prefix")
+        helper.copy("storage")
+        helper.copy("admin_whitelist")
